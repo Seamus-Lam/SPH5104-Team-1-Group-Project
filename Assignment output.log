@@ -1,0 +1,1994 @@
+--------------------------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\Assignment output.log
+  log type:  text
+ opened on:  25 Apr 2022, 19:05:20
+
+. import delimited "C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\df_clean_0422_CVICU.csv",
+>  clear 
+(encoding automatically selected: ISO-8859-2)
+(31 vars, 668 obs)
+
+. 
+. rename hospital_expire_flag death
+
+. label define expose 0 "0_nonexposure" 1 "1_exposure"
+
+. label values expose expose
+
+. gen female=0
+
+. replace female=1 if gender=="F"
+(256 real changes made)
+
+. 
+. 
+. gen HR_cat=1 if heart_rhythm_cat=="AF (Atrial Fibrillation)"
+(592 missing values generated)
+
+. replace HR_cat=2 if heart_rhythm_cat=="SR (Sinus Rhythm)"
+(314 real changes made)
+
+. replace HR_cat=3 if heart_rhythm_cat=="ST (Sinus Tachycardia) "
+(160 real changes made)
+
+. replace HR_cat=4 if heart_rhythm_cat== "rare rhythm"
+(73 real changes made)
+
+. replace HR_cat=4 if heart_rhythm_cat== "SB (Sinus Bradycardia)"
+(45 real changes made)
+
+. 
+. 
+. gen icu_weekend=0
+
+. replace icu_weekend=1 if icu_entrydate_weekend=="TRUE"
+(190 real changes made)
+
+. 
+. tab HR_cat, gen(HR_cat_)
+
+     HR_cat |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |         76       11.38       11.38
+          2 |        314       47.01       58.38
+          3 |        160       23.95       82.34
+          4 |        118       17.66      100.00
+------------+-----------------------------------
+      Total |        668      100.00
+
+. label variable HR_cat_1 "Atrial Fibrillation"
+
+. label variable HR_cat_2 "Sinus Rhythm"
+
+. label variable HR_cat_3 "Sinus Tachycardia"
+
+. label variable HR_cat_4 "Ohter rhythms"
+
+. 
+. local xConVar age bodyweight heart_rate_first24h_mean mbp_first24h_mean resp_rate_first24h_mean spo2_first24h_mean
+>  
+
+. foreach x in `xVarAll' {
+  2.         replace `x'=round(`x',0)
+  3. }
+
+. label variable heart_rate_first24h_mean "heart_rate"
+
+. label variable mbp_first24h_mean "mbp"
+
+. label variable resp_rate_first24h_mean "resp_rate"
+
+. label variable spo2_first24h_mean "spo2"
+
+. label variable charlson_comorbidity_index "CCI"
+
+. label variable lowest_gcs_motor_eyes_first24h "lowest_meGCS"
+
+. 
+. 
+. gen unfav_neuro=0
+
+. replace unfav_neuro=1 if last_gcs_motor<6
+(324 real changes made)
+
+. 
+. drop if lowest_gcs_motor_eyes_first24h>5
+(91 observations deleted)
+
+. 
+. ////List all the independent variables 
+> global xVarAll age female HR_cat_1-HR_cat_4 heart_rate_first24h_mean mbp_first24h_mean resp_rate_first24h_mean spo
+> 2_first24h_mean charlson_comorbidity_index lowest_gcs_motor_eyes_first24h oasis apsiii icu_weekend
+
+. 
+. foreach x in $xVarAll {
+  2. drop if missing(`x')
+  3. }
+(0 observations deleted)
+(0 observations deleted)
+(0 observations deleted)
+(0 observations deleted)
+(0 observations deleted)
+(0 observations deleted)
+(0 observations deleted)
+(0 observations deleted)
+(0 observations deleted)
+(0 observations deleted)
+(0 observations deleted)
+(0 observations deleted)
+
+. 
+. //Generate matrix to export mean, sd, and p-values 
+. global xConVar age heart_rate_first24h_mean mbp_first24h_mean resp_rate_first24h_mean spo2_first24h_mean charlson_
+> comorbidity_index lowest_gcs_motor_eyes_first24h oasis apsiii
+
+. 
+. foreach var in ttest {
+  2.   matrix `var' = J(9,7,.)
+  3.   matrix rownames `var' = $xConVar
+  4.   matrix colnames `var' = N Mean SD N Mean SD p-value
+  5. }
+
+. 
+. //Initialize the list of names used for estimates store command for estout
+. local ttestTable ""
+
+. //Initialize the variable to provide the indice of the columns to store
+. local rowcount=1
+
+. foreach x in $xConVar {
+  2.         display `x'
+  3.         ttest `x', by(expose)
+  4.         matrix ttest[`rowcount',1]=r(N_2)
+  5.         matrix ttest[`rowcount',2]=r(mu_2)
+  6.         matrix ttest[`rowcount',3]=r(sd_2)
+  7.         matrix ttest[`rowcount',4]=r(N_1)
+  8.         matrix ttest[`rowcount',5]=r(mu_1)
+  9.         matrix ttest[`rowcount',6]=r(sd_1)
+ 10.         matrix ttest[`rowcount',7]=r(p)
+ 11.         local ttestTable "`ttestTable'"
+ 12.         local rowcount=`rowcount'+1
+ 13. }
+77
+
+Two-sample t test with equal variances
+------------------------------------------------------------------------------
+   Group |     Obs        Mean    Std. err.   Std. dev.   [95% conf. interval]
+---------+--------------------------------------------------------------------
+0_nonexp |     314    66.24522    .9113228    16.14868    64.45213    68.03832
+1_exposu |     263     60.3384    1.113262    18.05408    58.14632    62.53048
+---------+--------------------------------------------------------------------
+Combined |     577    63.55286    .7194259     17.2812    62.13984    64.96588
+---------+--------------------------------------------------------------------
+    diff |             5.90682    1.424621                3.108724    8.704916
+------------------------------------------------------------------------------
+    diff = mean(0_nonexp) - mean(1_exposu)                        t =   4.1462
+H0: diff = 0                                     Degrees of freedom =      575
+
+    Ha: diff < 0                 Ha: diff != 0                 Ha: diff > 0
+ Pr(T < t) = 1.0000         Pr(|T| > |t|) = 0.0000          Pr(T > t) = 0.0000
+71
+
+Two-sample t test with equal variances
+------------------------------------------------------------------------------
+   Group |     Obs        Mean    Std. err.   Std. dev.   [95% conf. interval]
+---------+--------------------------------------------------------------------
+0_nonexp |     314     86.9586    .9784436    17.33807    85.03344    88.88376
+1_exposu |     263    76.61977     1.07526    17.43778    74.50252    78.73702
+---------+--------------------------------------------------------------------
+Combined |     577     82.2461    .7542187    18.11695    80.76475    83.72745
+---------+--------------------------------------------------------------------
+    diff |            10.33883    1.453062                 7.48487    13.19278
+------------------------------------------------------------------------------
+    diff = mean(0_nonexp) - mean(1_exposu)                        t =   7.1152
+H0: diff = 0                                     Degrees of freedom =      575
+
+    Ha: diff < 0                 Ha: diff != 0                 Ha: diff > 0
+ Pr(T < t) = 1.0000         Pr(|T| > |t|) = 0.0000          Pr(T > t) = 0.0000
+86
+
+Two-sample t test with equal variances
+------------------------------------------------------------------------------
+   Group |     Obs        Mean    Std. err.   Std. dev.   [95% conf. interval]
+---------+--------------------------------------------------------------------
+0_nonexp |     314    77.21656    .5627372    9.971729    76.10933    78.32379
+1_exposu |     263    83.22433    .7416342    12.02729    81.76401    84.68466
+---------+--------------------------------------------------------------------
+Combined |     577    79.95494    .4724655    11.34901    79.02697     80.8829
+---------+--------------------------------------------------------------------
+    diff |           -6.007774    .9158162               -7.806527   -4.209021
+------------------------------------------------------------------------------
+    diff = mean(0_nonexp) - mean(1_exposu)                        t =  -6.5600
+H0: diff = 0                                     Degrees of freedom =      575
+
+    Ha: diff < 0                 Ha: diff != 0                 Ha: diff > 0
+ Pr(T < t) = 0.0000         Pr(|T| > |t|) = 0.0000          Pr(T > t) = 1.0000
+18
+
+Two-sample t test with equal variances
+------------------------------------------------------------------------------
+   Group |     Obs        Mean    Std. err.   Std. dev.   [95% conf. interval]
+---------+--------------------------------------------------------------------
+0_nonexp |     314    19.78981    .2240166    3.969584    19.34904    20.23058
+1_exposu |     263    21.37262    .2574037    4.174387    20.86578    21.87947
+---------+--------------------------------------------------------------------
+Combined |     577    20.51127    .1722087    4.136595    20.17303     20.8495
+---------+--------------------------------------------------------------------
+    diff |           -1.582815    .3397179               -2.250054   -.9155753
+------------------------------------------------------------------------------
+    diff = mean(0_nonexp) - mean(1_exposu)                        t =  -4.6592
+H0: diff = 0                                     Degrees of freedom =      575
+
+    Ha: diff < 0                 Ha: diff != 0                 Ha: diff > 0
+ Pr(T < t) = 0.0000         Pr(|T| > |t|) = 0.0000          Pr(T > t) = 1.0000
+98
+
+Two-sample t test with equal variances
+------------------------------------------------------------------------------
+   Group |     Obs        Mean    Std. err.   Std. dev.   [95% conf. interval]
+---------+--------------------------------------------------------------------
+0_nonexp |     314    97.66561    .1071263    1.898283    97.45483    97.87638
+1_exposu |     263    98.43346    .1057504    1.714983    98.22523    98.64169
+---------+--------------------------------------------------------------------
+Combined |     577     98.0156    .0772408    1.855388    97.86389    98.16731
+---------+--------------------------------------------------------------------
+    diff |            -.767855    .1518846               -1.066171   -.4695388
+------------------------------------------------------------------------------
+    diff = mean(0_nonexp) - mean(1_exposu)                        t =  -5.0555
+H0: diff = 0                                     Degrees of freedom =      575
+
+    Ha: diff < 0                 Ha: diff != 0                 Ha: diff > 0
+ Pr(T < t) = 0.0000         Pr(|T| > |t|) = 0.0000          Pr(T > t) = 1.0000
+6
+
+Two-sample t test with equal variances
+------------------------------------------------------------------------------
+   Group |     Obs        Mean    Std. err.   Std. dev.   [95% conf. interval]
+---------+--------------------------------------------------------------------
+0_nonexp |     314    5.863057    .1595891    2.827925    5.549054     6.17706
+1_exposu |     263     4.60076    .1768492    2.868012    4.252534    4.948987
+---------+--------------------------------------------------------------------
+Combined |     577    5.287695    .1212518    2.912569    5.049545    5.525845
+---------+--------------------------------------------------------------------
+    diff |            1.262297     .237914                .7950105    1.729583
+------------------------------------------------------------------------------
+    diff = mean(0_nonexp) - mean(1_exposu)                        t =   5.3057
+H0: diff = 0                                     Degrees of freedom =      575
+
+    Ha: diff < 0                 Ha: diff != 0                 Ha: diff > 0
+ Pr(T < t) = 1.0000         Pr(|T| > |t|) = 0.0000          Pr(T > t) = 0.0000
+2
+
+Two-sample t test with equal variances
+------------------------------------------------------------------------------
+   Group |     Obs        Mean    Std. err.   Std. dev.   [95% conf. interval]
+---------+--------------------------------------------------------------------
+0_nonexp |     314     2.56051    .0629409    1.115316    2.436669     2.68435
+1_exposu |     263    2.140684    .0356949    .5788732    2.070399     2.21097
+---------+--------------------------------------------------------------------
+Combined |     577    2.369151    .0388788    .9339013    2.292789    2.445512
+---------+--------------------------------------------------------------------
+    diff |            .4198251    .0761441                .2702706    .5693797
+------------------------------------------------------------------------------
+    diff = mean(0_nonexp) - mean(1_exposu)                        t =   5.5136
+H0: diff = 0                                     Degrees of freedom =      575
+
+    Ha: diff < 0                 Ha: diff != 0                 Ha: diff > 0
+ Pr(T < t) = 1.0000         Pr(|T| > |t|) = 0.0000          Pr(T > t) = 0.0000
+34
+
+Two-sample t test with equal variances
+------------------------------------------------------------------------------
+   Group |     Obs        Mean    Std. err.   Std. dev.   [95% conf. interval]
+---------+--------------------------------------------------------------------
+0_nonexp |     314    41.71656    .5405531    9.578626    40.65298    42.78014
+1_exposu |     263    42.42586    .5027759    8.153654    41.43586    43.41585
+---------+--------------------------------------------------------------------
+Combined |     577    42.03986     .372872    8.956694    41.30751    42.77222
+---------+--------------------------------------------------------------------
+    diff |            -.709295     .748741               -2.179896    .7613059
+------------------------------------------------------------------------------
+    diff = mean(0_nonexp) - mean(1_exposu)                        t =  -0.9473
+H0: diff = 0                                     Degrees of freedom =      575
+
+    Ha: diff < 0                 Ha: diff != 0                 Ha: diff > 0
+ Pr(T < t) = 0.1719         Pr(|T| > |t|) = 0.3439          Pr(T > t) = 0.8281
+56
+
+Two-sample t test with equal variances
+------------------------------------------------------------------------------
+   Group |     Obs        Mean    Std. err.   Std. dev.   [95% conf. interval]
+---------+--------------------------------------------------------------------
+0_nonexp |     314    71.69108    1.742158    30.87111    68.26326     75.1189
+1_exposu |     263    78.54373    1.855469    30.09065     74.8902    82.19726
+---------+--------------------------------------------------------------------
+Combined |     577    74.81456    1.277317    30.68221    72.30579    77.32332
+---------+--------------------------------------------------------------------
+    diff |           -6.852643    2.550944               -11.86295   -1.842339
+------------------------------------------------------------------------------
+    diff = mean(0_nonexp) - mean(1_exposu)                        t =  -2.6863
+H0: diff = 0                                     Degrees of freedom =      575
+
+    Ha: diff < 0                 Ha: diff != 0                 Ha: diff > 0
+ Pr(T < t) = 0.0037         Pr(|T| > |t|) = 0.0074          Pr(T > t) = 0.9963
+
+. matrix list ttest
+
+ttest[9,7]
+                      N       Mean         SD          N       Mean         SD    p-value
+         age        263  60.338403  18.054084        314  66.245223  16.148682  .00003889
+heart_rat~an        263  76.619772  17.437782        314  86.958599  17.338065  3.340e-12
+mbp_first~an        263  83.224335  12.027285        314  77.216561   9.971729  1.201e-10
+resp_rate~an        263  21.372624   4.174387        314  19.789809  3.9695838  3.948e-06
+spo2_firs~an        263   98.43346  1.7149829        314  97.665605  1.8982828  5.778e-07
+charlson_c~x        263  4.6007605  2.8680125        314  5.8630573  2.8279253  1.604e-07
+lowest_g~24h        263  2.1406844   .5788732        314  2.5605096  1.1153164  5.318e-08
+       oasis        263  42.425856  8.1536542        314  41.716561   9.578626  .34387527
+      apsiii        263  78.543726  30.090655        314  71.691083  30.871114  .00743328
+
+. 
+. //Export ttest to excel file
+. putexcel set "C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\Group Assignment\Ttest.xlsx",
+>  replace sheet(Ttest, replace)
+Note: File will be replaced when the first putexcel command is issued.
+
+. putexcel (B2) = matrix(ttest), names overwritefmt
+file C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\Group Assignment\Ttest.xlsx saved
+
+. putexcel clear
+
+. 
+. ***categorical covariates
+. global xCatVar gender HR_cat icu_weekend
+
+. foreach x in $xCatVar {
+  2.         tab `x' expose, column chi2
+  3. }
+
++-------------------+
+| Key               |
+|-------------------|
+|     frequency     |
+| column percentage |
++-------------------+
+
+           |        expose
+    gender | 0_nonexpo  1_exposur |     Total
+-----------+----------------------+----------
+         F |       121         97 |       218 
+           |     38.54      36.88 |     37.78 
+-----------+----------------------+----------
+         M |       193        166 |       359 
+           |     61.46      63.12 |     62.22 
+-----------+----------------------+----------
+     Total |       314        263 |       577 
+           |    100.00     100.00 |    100.00 
+
+          Pearson chi2(1) =   0.1663   Pr = 0.683
+
++-------------------+
+| Key               |
+|-------------------|
+|     frequency     |
+| column percentage |
++-------------------+
+
+           |        expose
+    HR_cat | 0_nonexpo  1_exposur |     Total
+-----------+----------------------+----------
+         1 |        33         26 |        59 
+           |     10.51       9.89 |     10.23 
+-----------+----------------------+----------
+         2 |       143        128 |       271 
+           |     45.54      48.67 |     46.97 
+-----------+----------------------+----------
+         3 |        66         70 |       136 
+           |     21.02      26.62 |     23.57 
+-----------+----------------------+----------
+         4 |        72         39 |       111 
+           |     22.93      14.83 |     19.24 
+-----------+----------------------+----------
+     Total |       314        263 |       577 
+           |    100.00     100.00 |    100.00 
+
+          Pearson chi2(3) =   7.1372   Pr = 0.068
+
++-------------------+
+| Key               |
+|-------------------|
+|     frequency     |
+| column percentage |
++-------------------+
+
+icu_weeken |        expose
+         d | 0_nonexpo  1_exposur |     Total
+-----------+----------------------+----------
+         0 |       224        185 |       409 
+           |     71.34      70.34 |     70.88 
+-----------+----------------------+----------
+         1 |        90         78 |       168 
+           |     28.66      29.66 |     29.12 
+-----------+----------------------+----------
+     Total |       314        263 |       577 
+           |    100.00     100.00 |    100.00 
+
+          Pearson chi2(1) =   0.0687   Pr = 0.793
+
+. 
+. //calculate standardized differences between groups for continuous and categorical variables
+. stddiff age i.female i.HR_cat heart_rate_first24h_mean mbp_first24h_mean resp_rate_first24h_mean spo2_first24h_mea
+> n charlson_comorbidity_index lowest_gcs_motor_eyes_first24h oasis apsiii i.icu_weekend, by(expose)
+
+------------------------------------------------------------------------------
+             |  expose=0 nonexposure   |    expose=1 exposure    |
+             | Mean or N     SD or (%) | Mean or N     SD or (%) |  Std Diff
+-------------+-------------------------+-------------------------+------------
+         age |     66.25        16.149 |     60.34        18.054 |    0.34487
+             |                         |                         |
+      female |                         |                         |
+           0 |       193        (61.5) |       166        (63.1) |    0.03411
+           1 |       121        (38.5) |        97        (36.9) | 
+             |                         |                         |
+      HR cat |                         |                         |
+           1 |        33        (10.5) |        26        ( 9.9) |    0.22586
+           2 |       143        (45.5) |       128        (48.7) | 
+           3 |        66        (21.0) |        70        (26.6) | 
+           4 |        72        (22.9) |        39        (14.8) | 
+             |                         |                         |
+heart rate~n |     86.96        17.338 |     76.62        17.438 |    0.59460
+mbp first2~n |     77.22        9.9717 |     83.22        12.027 |   -0.54382
+resp rate ~n |     19.79        3.9696 |     21.37        4.1744 |   -0.38859
+spo2 first~n |     97.67        1.8983 |     98.43         1.715 |   -0.42447
+charlson c~x |     5.863        2.8279 |     4.601         2.868 |    0.44322
+lowest g~24h |     2.561        1.1153 |     2.141        .57887 |    0.47249
+       oasis |     41.72        9.5786 |     42.43        8.1537 |   -0.07974
+      apsiii |     71.69        30.871 |     78.54        30.091 |   -0.22480
+             |                         |                         |
+ icu weekend |                         |                         |
+           0 |       224        (71.3) |       185        (70.3) |    0.02190
+           1 |        90        (28.7) |        78        (29.7) | 
+------------------------------------------------------------------------------
+
+. 
+. 
+. ********************************************models for primary outcome******************************************
+. ***********ipw-regression adjustment
+. global y death
+
+. global xVarAll age female HR_cat_1-HR_cat_4 heart_rate_first24h_mean mbp_first24h_mean resp_rate_first24h_mean spo
+> 2_first24h_mean charlson_comorbidity_index lowest_gcs_motor_eyes_first24h oasis apsiii icu_weekend
+
+. global xVarPSW age female HR_cat_1 HR_cat_2 HR_cat_3 HR_cat_4 heart_rate_first24h_mean mbp_first24h_mean resp_rate
+> _first24h_mean spo2_first24h_mean charlson_comorbidity_index lowest_gcs_motor_eyes_first24h oasis apsiii icu_weeke
+> nd
+
+. //run the model
+. teffects ipwra ($y $xVarAll, logit) (expose $xVarPSW, logit), aequations ate
+note: HR_cat_4 omitted because of collinearity.
+note: HR_cat_4 omitted because of collinearity.
+
+Iteration 0:   EE criterion =  4.784e-22  
+Iteration 1:   EE criterion =  1.489e-30  
+
+Treatment-effects estimation                    Number of obs     =        577
+Estimator      : IPW regression adjustment
+Outcome model  : logit
+Treatment model: logit
+------------------------------------------------------------------------------------------------
+                               |               Robust
+                         death | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------------------------+----------------------------------------------------------------
+ATE                            |
+                        expose |
+(1_exposure vs 0_nonexposure)  |    .112023   .0505352     2.22   0.027     .0129759    .2110701
+-------------------------------+----------------------------------------------------------------
+POmean                         |
+                        expose |
+                0_nonexposure  |   .4590132   .0332026    13.82   0.000     .3939372    .5240892
+-------------------------------+----------------------------------------------------------------
+OME0                           |
+                           age |  -.0065567   .0120034    -0.55   0.585    -.0300828    .0169695
+                        female |   .2719594   .2969721     0.92   0.360    -.3100953     .854014
+                      HR_cat_1 |   1.301431   .5965791     2.18   0.029     .1321578    2.470705
+                      HR_cat_2 |  -.1687273   .4042951    -0.42   0.676    -.9611311    .6236766
+                      HR_cat_3 |  -.3711299   .5506415    -0.67   0.500    -1.450367    .7081077
+                      HR_cat_4 |          0  (omitted)
+      heart_rate_first24h_mean |   .0198661   .0113874     1.74   0.081    -.0024528    .0421851
+             mbp_first24h_mean |   .0200997   .0147885     1.36   0.174    -.0088852    .0490846
+       resp_rate_first24h_mean |   .0482045   .0425537     1.13   0.257    -.0351992    .1316083
+            spo2_first24h_mean |   .0512947   .0857566     0.60   0.550    -.1167852    .2193745
+    charlson_comorbidity_index |   .1960321   .0667401     2.94   0.003     .0652239    .3268402
+lowest_gcs_motor_eyes_first24h |  -.0604911   .1427445    -0.42   0.672    -.3402653     .219283
+                         oasis |   .0063778   .0250432     0.25   0.799    -.0427059    .0554615
+                        apsiii |   .0223979   .0078666     2.85   0.004     .0069796    .0378161
+                   icu_weekend |  -.0399915   .3134162    -0.13   0.898    -.6542759    .5742929
+                         _cons |  -11.90937   8.784237    -1.36   0.175    -29.12616    5.307421
+-------------------------------+----------------------------------------------------------------
+OME1                           |
+                           age |   .0288358   .0162926     1.77   0.077    -.0030972    .0607688
+                        female |   .3454728   .3486569     0.99   0.322    -.3378822    1.028828
+                      HR_cat_1 |   2.025057   .8457741     2.39   0.017     .3673701    3.682744
+                      HR_cat_2 |   .7576281   .4800688     1.58   0.115    -.1832895    1.698546
+                      HR_cat_3 |   .4070642   .5616639     0.72   0.469    -.6937768    1.507905
+                      HR_cat_4 |          0  (omitted)
+      heart_rate_first24h_mean |   .0219877   .0108384     2.03   0.042     .0007448    .0432306
+             mbp_first24h_mean |   .0142104   .0137682     1.03   0.302    -.0127748    .0411957
+       resp_rate_first24h_mean |   .0399756   .0472645     0.85   0.398     -.052661    .1326122
+            spo2_first24h_mean |    .042483   .1134032     0.37   0.708    -.1797833    .2647492
+    charlson_comorbidity_index |  -.0299236   .0899856    -0.33   0.739    -.2062921    .1464449
+lowest_gcs_motor_eyes_first24h |   .1753845   .2766254     0.63   0.526    -.3667912    .7175603
+                         oasis |  -.0759549   .0354252    -2.14   0.032    -.1453871   -.0065227
+                        apsiii |   .0241669   .0079771     3.03   0.002      .008532    .0398018
+                   icu_weekend |   .3246377   .3717808     0.87   0.383    -.4040393    1.053315
+                         _cons |  -9.154713   12.28249    -0.75   0.456    -33.22794    14.91852
+-------------------------------+----------------------------------------------------------------
+TME1                           |
+                           age |  -.0031331   .0090564    -0.35   0.729    -.0208834    .0146172
+                        female |   .1787969   .2289007     0.78   0.435    -.2698403    .6274341
+                      HR_cat_1 |   1.562584   .4742071     3.30   0.001      .633155    2.492013
+                      HR_cat_2 |   .9456106    .296949     3.18   0.001     .3636012     1.52762
+                      HR_cat_3 |   2.289569   .4127558     5.55   0.000     1.480583    3.098556
+                      HR_cat_4 |          0  (omitted)
+      heart_rate_first24h_mean |  -.0762608   .0092958    -8.20   0.000    -.0944802   -.0580414
+             mbp_first24h_mean |   .0541322   .0108113     5.01   0.000     .0329424    .0753219
+       resp_rate_first24h_mean |   .1788933   .0317098     5.64   0.000     .1167433    .2410434
+            spo2_first24h_mean |   .3158021   .0761094     4.15   0.000     .1666304    .4649739
+    charlson_comorbidity_index |  -.1018304    .053828    -1.89   0.059    -.2073313    .0036705
+lowest_gcs_motor_eyes_first24h |  -.6667631   .1330344    -5.01   0.000    -.9275057   -.4060205
+                         oasis |   .0093816   .0183098     0.51   0.608     -.026505    .0452682
+                        apsiii |   .0101109   .0050861     1.99   0.047     .0001424    .0200795
+                   icu_weekend |   .2038103    .233974     0.87   0.384    -.2547703     .662391
+                         _cons |  -33.03249   7.943085    -4.16   0.000    -48.60065   -17.46433
+------------------------------------------------------------------------------------------------
+
+. 
+. //check treatment model balanced the covariates-note:treatment effects are only accurate if balance is achieved.
+. tebalance summarize
+
+Covariate balance summary
+
+                         Raw     Weighted
+-----------------------------------------
+Number of obs =          577        577.0
+Treated obs   =          263        297.7
+Control obs   =          314        279.3
+-----------------------------------------
+
+-----------------------------------------------------------------
+                |Standardized differences          Variance ratio
+                |        Raw    Weighted           Raw   Weighted
+----------------+------------------------------------------------
+            age |  -.3448654   -.1000051      1.249904   1.283006
+         female |    -.03405   -.0244265      .9834541   .9855523
+       HR_cat_1 |  -.0205727    .0097445      .9478037   1.018754
+       HR_cat_2 |   .0625822    .0371013      1.007926   1.006204
+       HR_cat_3 |   .1314445    .0273249      1.177272   1.038428
+heart_rate_f~an |  -.5945957    .0256151      1.011536   1.475084
+mbp_first24h~an |   .5438169    .1220584       1.45477    .954174
+resp_rate_fi~an |   .3885855    .1290936      1.105848   1.050744
+spo2_first24~an |   .4244741   -.0744709      .8162021   1.443001
+charlson_como~x |  -.4432161    -.062711      1.028552   1.322139
+lowest_gcs_~24h |   -.472486   -.0400504      .2693833   .8406207
+          oasis |   .0797434    .0021138      .7245997   .8099359
+         apsiii |   .2247993   -.0067673      .9500767   1.009806
+    icu_weekend |   .0218634   -.0164063      1.020922   .9829329
+-----------------------------------------------------------------
+
+.         mat M=r(table)
+
+.         //ssc install coefplot,replace
+.         coefplot matrix(M[,2]), noci xline(0) xline(-0.25 0.25, lpattern(dash)) title("Standardized differences af
+> ter matching")
+
+.         graph export stdif_m.png, replace
+file stdif_m.png saved as PNG format
+
+.         coefplot matrix(M[,4]), noci xline(1) title("Variance ratios after matching")
+
+.         graph export var.png,replace
+file var.png saved as PNG format
+
+. 
+. foreach x in $xVarPSW {
+  2.         tebalance density `x', saving("C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\b
+> alance_`x'",replace)
+  3. }
+file C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\balance_age.gph saved
+file C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\balance_female.gph saved
+file C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\balance_HR_cat_1.gph saved
+file C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\balance_HR_cat_2.gph saved
+file C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\balance_HR_cat_3.gph saved
+file C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\balance_HR_cat_4.gph saved
+file C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\balance_heart_rate_first24h_mean.gph sav
+> ed
+file C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\balance_mbp_first24h_mean.gph saved
+file C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\balance_resp_rate_first24h_mean.gph save
+> d
+file C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\balance_spo2_first24h_mean.gph saved
+file C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\balance_charlson_comorbidity_index.gph s
+> aved
+file C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\balance_lowest_gcs_motor_eyes_first24h.g
+> ph saved
+file C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\balance_oasis.gph saved
+file C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\balance_apsiii.gph saved
+file C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\balance_icu_weekend.gph saved
+
+. //to check overlap
+. qui logit expose $xVarPSW, nolog
+
+. predict double ps if e(sample)
+(option pr assumed; Pr(expose))
+
+. tabstat ps, by(expose) stats(N mean median min max)
+
+Summary for variables: ps
+Group variable: expose 
+
+       expose |         N      Mean       p50       Min       Max
+--------------+--------------------------------------------------
+0_nonexposure |       314  .2807868  .2060935  .0046201  .9541303
+   1_exposure |       263  .6647641  .7162168  .0437542  .9977452
+--------------+--------------------------------------------------
+        Total |       577  .4558059  .4188741  .0046201  .9977452
+-----------------------------------------------------------------
+
+. qui teffects ipwra ($y $xVarAll, logit) (expose $xVarPSW, logit), aequations ate
+
+. teffects overlap, ptl(1)
+
+. graph export overlap_ipwra.png,replace
+file overlap_ipwra.png saved as PNG format
+
+. //run an overidentification test to check findings from the diagnostics
+. tebalance overid, nolog
+
+Overidentification test for covariate balance
+H0: Covariates are balanced
+
+         chi2(15)     =  3.17802
+         Prob > chi2  =   0.9994
+
+. 
+. //to show pom for both groups
+. teffects ipwra (death $xVarAll, logit) (expose $xVarPSW, logit), ate vce(robust)
+note: HR_cat_4 omitted because of collinearity.
+note: HR_cat_4 omitted because of collinearity.
+
+Iteration 0:   EE criterion =  4.784e-22  
+Iteration 1:   EE criterion =  1.489e-30  
+
+Treatment-effects estimation                    Number of obs     =        577
+Estimator      : IPW regression adjustment
+Outcome model  : logit
+Treatment model: logit
+------------------------------------------------------------------------------------------------
+                               |               Robust
+                         death | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------------------------+----------------------------------------------------------------
+ATE                            |
+                        expose |
+(1_exposure vs 0_nonexposure)  |    .112023   .0505352     2.22   0.027     .0129759    .2110701
+-------------------------------+----------------------------------------------------------------
+POmean                         |
+                        expose |
+                0_nonexposure  |   .4590132   .0332026    13.82   0.000     .3939372    .5240892
+------------------------------------------------------------------------------------------------
+
+. teffects ipwra (death $xVarAll, logit) (expose $xVarPSW, logit), pom vce(robust)
+note: HR_cat_4 omitted because of collinearity.
+note: HR_cat_4 omitted because of collinearity.
+
+Iteration 0:   EE criterion =  4.784e-22  
+Iteration 1:   EE criterion =  1.474e-30  
+
+Treatment-effects estimation                    Number of obs     =        577
+Estimator      : IPW regression adjustment
+Outcome model  : logit
+Treatment model: logit
+------------------------------------------------------------------------------------------------
+                               |               Robust
+                         death | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------------------------+----------------------------------------------------------------
+POmeans                        |
+                        expose |
+                0_nonexposure  |   .4590132   .0332026    13.82   0.000     .3939372    .5240892
+                   1_exposure  |   .5710362   .0397802    14.35   0.000     .4930684     .649004
+------------------------------------------------------------------------------------------------
+
+. 
+. //To transform coefficient to risk ratio
+. // teffects ipwra (death $xVarAll,logit) (expose $xVarPSW,logit), pom coeflegend        //to show the coef legend 
+> instead of values
+. nlcom log( _b[POmeans:1.expose] / _b[POmeans:0bn.expose]) //the legend used could be derived by the above command
+
+       _nl_1: log( _b[POmeans:1.expose] / _b[POmeans:0bn.expose])
+
+------------------------------------------------------------------------------
+       death | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+       _nl_1 |   .2183736   .0979041     2.23   0.026     .0264852    .4102621
+------------------------------------------------------------------------------
+
+. di exp(.2183736)
+1.2440518
+
+. di exp(.0264852)
+1.026839
+
+. di exp(.4102621)
+1.5072128
+
+.         
+. ***********regression adjustment
+. //teffects ra to estimate the ATE on the treated (ATET)-USES ONLY THE SUBJECTS WHO WERE OBSERVED IN THE TREATMENT 
+> GROUP
+.         teffects ra (death $xVarAll, logit) (expose), pom
+note: HR_cat_4 omitted because of collinearity.
+
+Iteration 0:   EE criterion =  8.951e-24  
+Iteration 1:   EE criterion =  8.063e-32  
+
+Treatment-effects estimation                    Number of obs     =        577
+Estimator      : regression adjustment
+Outcome model  : logit
+Treatment model: none
+------------------------------------------------------------------------------------------------
+                               |               Robust
+                         death | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------------------------+----------------------------------------------------------------
+POmeans                        |
+                        expose |
+                0_nonexposure  |   .4563355   .0330324    13.81   0.000     .3915931    .5210779
+                   1_exposure  |   .5616415   .0371391    15.12   0.000     .4888502    .6344327
+------------------------------------------------------------------------------------------------
+
+. 
+. ***********ipw model
+.         //ipw (propensity score creation and treatment effect estimation are performed concurrently ) 1.09 0.85 1.
+> 40
+.         teffects ipw (death) (expose $xVarPSW, logit), pom vce(robust)
+note: HR_cat_4 omitted because of collinearity.
+
+Iteration 0:   EE criterion =  4.618e-26  
+Iteration 1:   EE criterion =  1.260e-30  
+
+Treatment-effects estimation                    Number of obs     =        577
+Estimator      : inverse-probability weights
+Outcome model  : weighted mean
+Treatment model: logit
+------------------------------------------------------------------------------------------------
+                               |               Robust
+                         death | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------------------------+----------------------------------------------------------------
+POmeans                        |
+                        expose |
+                0_nonexposure  |   .4859659   .0362311    13.41   0.000     .4149543    .5569775
+                   1_exposure  |   .5834365   .0431319    13.53   0.000     .4988994    .6679735
+------------------------------------------------------------------------------------------------
+
+.         teffects ipw (death) (expose $xVarPSW, logit), pom coeflegend
+note: HR_cat_4 omitted because of collinearity.
+
+Iteration 0:   EE criterion =  4.618e-26  
+Iteration 1:   EE criterion =  1.260e-30  
+
+Treatment-effects estimation                    Number of obs     =        577
+Estimator      : inverse-probability weights
+Outcome model  : weighted mean
+Treatment model: logit
+------------------------------------------------------------------------------------------------
+                         death | Coefficient  Legend
+-------------------------------+----------------------------------------------------------------
+POmeans                        |
+                        expose |
+                0_nonexposure  |   .4859659  _b[POmeans:0bn.expose]
+                   1_exposure  |   .5834365  _b[POmeans:1.expose]
+------------------------------------------------------------------------------------------------
+
+.         nlcom log( _b[POmeans:1.expose] / _b[POmeans:0bn.expose])
+
+       _nl_1: log( _b[POmeans:1.expose] / _b[POmeans:0bn.expose])
+
+------------------------------------------------------------------------------
+       death | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+       _nl_1 |   .1827971   .1006296     1.82   0.069    -.0144333    .3800275
+------------------------------------------------------------------------------
+
+.         di exp(.1999968)
+1.2213988
+
+.         di exp(.0006696)
+1.0006698
+
+.         di exp(.3993239)
+1.4908164
+
+.         
+. //Augmented-IPW
+.         teffects aipw (death $xVarAll,logit) (expose $xVarPSW,logit), pom vce(robust)
+note: HR_cat_4 omitted because of collinearity.
+note: HR_cat_4 omitted because of collinearity.
+
+Iteration 0:   EE criterion =  8.998e-24  
+Iteration 1:   EE criterion =  1.349e-30  
+
+Treatment-effects estimation                    Number of obs     =        577
+Estimator      : augmented IPW
+Outcome model  : logit by ML
+Treatment model: logit
+------------------------------------------------------------------------------------------------
+                               |               Robust
+                         death | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------------------------+----------------------------------------------------------------
+POmeans                        |
+                        expose |
+                0_nonexposure  |   .4725133   .0364416    12.97   0.000     .4010892    .5439375
+                   1_exposure  |   .5707338   .0404614    14.11   0.000      .491431    .6500366
+------------------------------------------------------------------------------------------------
+
+.         //teffects aipw (death $xVarAll,logit) (expose $xVarPSW,logit), pom coeflegend
+.         nlcom log( _b[POmeans:1.expose] / _b[POmeans:0bn.expose])
+
+       _nl_1: log( _b[POmeans:1.expose] / _b[POmeans:0bn.expose])
+
+------------------------------------------------------------------------------
+       death | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+       _nl_1 |    .188857   .1016662     1.86   0.063     -.010405    .3881191
+------------------------------------------------------------------------------
+
+.         di exp(.1843768)
+1.2024688
+
+.         di exp(-.0164976)
+.98363774
+
+.         di exp(.3852511)
+1.4699834
+
+. 
+. 
+. ********************************************8models for neurological outcome***********************************8
+. keep if death==0
+(292 observations deleted)
+
+. tab unfav_neuro expose, column chi2
+
++-------------------+
+| Key               |
+|-------------------|
+|     frequency     |
+| column percentage |
++-------------------+
+
+unfav_neur |        expose
+         o | 0_nonexpo  1_exposur |     Total
+-----------+----------------------+----------
+         0 |       153         93 |       246 
+           |     90.00      80.87 |     86.32 
+-----------+----------------------+----------
+         1 |        17         22 |        39 
+           |     10.00      19.13 |     13.68 
+-----------+----------------------+----------
+     Total |       170        115 |       285 
+           |    100.00     100.00 |    100.00 
+
+          Pearson chi2(1) =   4.8414   Pr = 0.028
+
+. 
+. **********ipw-regression adjustment
+. teffects ipwra (unfav_neuro  $xVarAll, logit) (expose $xVarPSW, logit), aequations ate
+note: HR_cat_4 omitted because of collinearity.
+note: HR_cat_4 omitted because of collinearity.
+
+Iteration 0:   EE criterion =  8.139e-11  (not concave)
+Iteration 1:   EE criterion =  4.220e-11  (not concave)
+Iteration 2:   EE criterion =  2.556e-11  (not concave)
+Iteration 3:   EE criterion =  1.657e-11  (not concave)
+Iteration 4:   EE criterion =  1.453e-11  (not concave)
+Iteration 5:   EE criterion =  1.335e-11  (not concave)
+Iteration 6:   EE criterion =  1.250e-11  (not concave)
+Iteration 7:   EE criterion =  1.186e-11  (not concave)
+Iteration 8:   EE criterion =  1.137e-11  (not concave)
+Iteration 9:   EE criterion =  1.098e-11  (not concave)
+Iteration 10:  EE criterion =  1.065e-11  (not concave)
+Iteration 11:  EE criterion =  1.038e-11  (not concave)
+Iteration 12:  EE criterion =  1.014e-11  (not concave)
+Iteration 13:  EE criterion =  9.924e-12  (not concave)
+Iteration 14:  EE criterion =  9.726e-12  (not concave)
+Iteration 15:  EE criterion =  9.543e-12  (not concave)
+Iteration 16:  EE criterion =  9.372e-12  (not concave)
+Iteration 17:  EE criterion =  9.211e-12  (not concave)
+Iteration 18:  EE criterion =  9.057e-12  (not concave)
+Iteration 19:  EE criterion =  8.912e-12  (not concave)
+Iteration 20:  EE criterion =  8.773e-12  (not concave)
+Iteration 21:  EE criterion =  8.639e-12  (not concave)
+Iteration 22:  EE criterion =  8.512e-12  (not concave)
+Iteration 23:  EE criterion =  8.389e-12  (not concave)
+Iteration 24:  EE criterion =  8.271e-12  (not concave)
+Iteration 25:  EE criterion =  8.157e-12  (not concave)
+Iteration 26:  EE criterion =  8.047e-12  (not concave)
+Iteration 27:  EE criterion =  7.940e-12  (not concave)
+Iteration 28:  EE criterion =  7.837e-12  (not concave)
+Iteration 29:  EE criterion =  7.738e-12  (not concave)
+Iteration 30:  EE criterion =  7.642e-12  (not concave)
+Iteration 31:  EE criterion =  7.548e-12  (not concave)
+Iteration 32:  EE criterion =  7.457e-12  (not concave)
+Iteration 33:  EE criterion =  7.370e-12  (not concave)
+Iteration 34:  EE criterion =  7.284e-12  (not concave)
+Iteration 35:  EE criterion =  7.201e-12  (not concave)
+Iteration 36:  EE criterion =  7.121e-12  (not concave)
+Iteration 37:  EE criterion =  7.042e-12  (not concave)
+Iteration 38:  EE criterion =  6.966e-12  (not concave)
+Iteration 39:  EE criterion =  6.892e-12  (not concave)
+Iteration 40:  EE criterion =  6.820e-12  (not concave)
+Iteration 41:  EE criterion =  6.750e-12  (not concave)
+Iteration 42:  EE criterion =  6.681e-12  (not concave)
+Iteration 43:  EE criterion =  6.615e-12  (not concave)
+Iteration 44:  EE criterion =  6.550e-12  (not concave)
+Iteration 45:  EE criterion =  6.487e-12  (not concave)
+Iteration 46:  EE criterion =  6.425e-12  (not concave)
+Iteration 47:  EE criterion =  6.365e-12  (not concave)
+Iteration 48:  EE criterion =  6.306e-12  (not concave)
+Iteration 49:  EE criterion =  6.249e-12  (not concave)
+Iteration 50:  EE criterion =  6.193e-12  (not concave)
+Iteration 51:  EE criterion =  6.139e-12  (not concave)
+Iteration 52:  EE criterion =  6.086e-12  (not concave)
+Iteration 53:  EE criterion =  6.034e-12  (not concave)
+Iteration 54:  EE criterion =  5.983e-12  (not concave)
+Iteration 55:  EE criterion =  5.933e-12  (not concave)
+Iteration 56:  EE criterion =  5.885e-12  (not concave)
+Iteration 57:  EE criterion =  5.838e-12  (not concave)
+Iteration 58:  EE criterion =  5.792e-12  (not concave)
+Iteration 59:  EE criterion =  5.747e-12  (not concave)
+Iteration 60:  EE criterion =  5.702e-12  (not concave)
+Iteration 61:  EE criterion =  5.659e-12  (not concave)
+Iteration 62:  EE criterion =  5.617e-12  (not concave)
+Iteration 63:  EE criterion =  5.576e-12  (not concave)
+Iteration 64:  EE criterion =  5.535e-12  (not concave)
+Iteration 65:  EE criterion =  5.496e-12  (not concave)
+Iteration 66:  EE criterion =  5.457e-12  (not concave)
+Iteration 67:  EE criterion =  5.420e-12  (not concave)
+Iteration 68:  EE criterion =  5.383e-12  (not concave)
+Iteration 69:  EE criterion =  5.346e-12  (not concave)
+Iteration 70:  EE criterion =  5.311e-12  (not concave)
+Iteration 71:  EE criterion =  5.276e-12  (not concave)
+Iteration 72:  EE criterion =  5.242e-12  (not concave)
+Iteration 73:  EE criterion =  5.209e-12  (not concave)
+Iteration 74:  EE criterion =  5.176e-12  (not concave)
+Iteration 75:  EE criterion =  5.144e-12  (not concave)
+Iteration 76:  EE criterion =  5.113e-12  (not concave)
+Iteration 77:  EE criterion =  5.082e-12  (not concave)
+Iteration 78:  EE criterion =  5.052e-12  (not concave)
+Iteration 79:  EE criterion =  5.022e-12  (not concave)
+Iteration 80:  EE criterion =  4.993e-12  (not concave)
+Iteration 81:  EE criterion =  4.965e-12  (not concave)
+Iteration 82:  EE criterion =  4.937e-12  (not concave)
+Iteration 83:  EE criterion =  4.910e-12  (not concave)
+Iteration 84:  EE criterion =  4.883e-12  (not concave)
+Iteration 85:  EE criterion =  4.857e-12  (not concave)
+Iteration 86:  EE criterion =  4.831e-12  (not concave)
+Iteration 87:  EE criterion =  4.806e-12  (not concave)
+Iteration 88:  EE criterion =  4.781e-12  (not concave)
+Iteration 89:  EE criterion =  4.756e-12  (not concave)
+Iteration 90:  EE criterion =  4.733e-12  (not concave)
+Iteration 91:  EE criterion =  4.709e-12  (not concave)
+Iteration 92:  EE criterion =  4.686e-12  (not concave)
+Iteration 93:  EE criterion =  4.663e-12  (not concave)
+Iteration 94:  EE criterion =  4.641e-12  (not concave)
+Iteration 95:  EE criterion =  4.619e-12  (not concave)
+Iteration 96:  EE criterion =  4.597e-12  (not concave)
+Iteration 97:  EE criterion =  4.576e-12  (not concave)
+Iteration 98:  EE criterion =  4.556e-12  (not concave)
+Iteration 99:  EE criterion =  4.535e-12  (not concave)
+Iteration 100: EE criterion =  4.515e-12  (not concave)
+Iteration 101: EE criterion =  4.495e-12  (not concave)
+Iteration 102: EE criterion =  4.476e-12  (not concave)
+Iteration 103: EE criterion =  4.457e-12  (not concave)
+Iteration 104: EE criterion =  4.438e-12  (not concave)
+Iteration 105: EE criterion =  4.419e-12  (not concave)
+Iteration 106: EE criterion =  4.401e-12  (not concave)
+Iteration 107: EE criterion =  4.383e-12  (not concave)
+Iteration 108: EE criterion =  4.366e-12  (not concave)
+Iteration 109: EE criterion =  4.348e-12  (not concave)
+Iteration 110: EE criterion =  4.331e-12  (not concave)
+Iteration 111: EE criterion =  4.315e-12  (not concave)
+Iteration 112: EE criterion =  4.298e-12  (not concave)
+Iteration 113: EE criterion =  4.282e-12  (not concave)
+Iteration 114: EE criterion =  4.266e-12  (not concave)
+Iteration 115: EE criterion =  4.250e-12  (not concave)
+Iteration 116: EE criterion =  4.234e-12  (not concave)
+Iteration 117: EE criterion =  4.219e-12  (not concave)
+Iteration 118: EE criterion =  4.204e-12  (not concave)
+Iteration 119: EE criterion =  4.189e-12  (not concave)
+Iteration 120: EE criterion =  4.174e-12  (not concave)
+Iteration 121: EE criterion =  4.160e-12  (not concave)
+Iteration 122: EE criterion =  4.146e-12  (not concave)
+Iteration 123: EE criterion =  4.132e-12  (not concave)
+Iteration 124: EE criterion =  4.118e-12  (not concave)
+Iteration 125: EE criterion =  4.104e-12  (not concave)
+Iteration 126: EE criterion =  4.091e-12  (not concave)
+Iteration 127: EE criterion =  4.077e-12  (not concave)
+Iteration 128: EE criterion =  4.064e-12  (not concave)
+Iteration 129: EE criterion =  4.051e-12  (not concave)
+Iteration 130: EE criterion =  4.038e-12  (not concave)
+Iteration 131: EE criterion =  4.026e-12  (not concave)
+Iteration 132: EE criterion =  4.013e-12  (not concave)
+Iteration 133: EE criterion =  4.001e-12  (not concave)
+Iteration 134: EE criterion =  3.989e-12  (not concave)
+Iteration 135: EE criterion =  3.977e-12  (not concave)
+Iteration 136: EE criterion =  3.965e-12  (not concave)
+Iteration 137: EE criterion =  3.954e-12  (not concave)
+Iteration 138: EE criterion =  3.942e-12  (not concave)
+Iteration 139: EE criterion =  3.931e-12  (not concave)
+Iteration 140: EE criterion =  3.919e-12  (not concave)
+Iteration 141: EE criterion =  3.908e-12  (not concave)
+Iteration 142: EE criterion =  3.897e-12  (not concave)
+Iteration 143: EE criterion =  3.887e-12  (not concave)
+Iteration 144: EE criterion =  3.876e-12  (not concave)
+Iteration 145: EE criterion =  3.865e-12  (not concave)
+Iteration 146: EE criterion =  3.855e-12  (not concave)
+Iteration 147: EE criterion =  3.844e-12  (not concave)
+Iteration 148: EE criterion =  3.834e-12  (not concave)
+Iteration 149: EE criterion =  3.824e-12  (not concave)
+Iteration 150: EE criterion =  3.814e-12  (not concave)
+Iteration 151: EE criterion =  3.804e-12  (not concave)
+Iteration 152: EE criterion =  3.795e-12  (not concave)
+Iteration 153: EE criterion =  3.785e-12  (not concave)
+Iteration 154: EE criterion =  3.775e-12  (not concave)
+Iteration 155: EE criterion =  3.766e-12  (not concave)
+Iteration 156: EE criterion =  3.756e-12  (not concave)
+Iteration 157: EE criterion =  3.747e-12  (not concave)
+Iteration 158: EE criterion =  3.738e-12  (not concave)
+Iteration 159: EE criterion =  3.729e-12  (not concave)
+Iteration 160: EE criterion =  3.720e-12  (not concave)
+Iteration 161: EE criterion =  3.711e-12  (not concave)
+Iteration 162: EE criterion =  3.702e-12  (not concave)
+Iteration 163: EE criterion =  3.694e-12  (not concave)
+Iteration 164: EE criterion =  3.685e-12  (not concave)
+Iteration 165: EE criterion =  3.676e-12  (not concave)
+Iteration 166: EE criterion =  3.668e-12  (not concave)
+Iteration 167: EE criterion =  3.660e-12  (not concave)
+Iteration 168: EE criterion =  3.651e-12  (not concave)
+Iteration 169: EE criterion =  3.643e-12  (not concave)
+Iteration 170: EE criterion =  3.635e-12  (not concave)
+Iteration 171: EE criterion =  3.627e-12  (not concave)
+Iteration 172: EE criterion =  3.619e-12  (not concave)
+Iteration 173: EE criterion =  3.611e-12  (not concave)
+Iteration 174: EE criterion =  3.603e-12  (not concave)
+Iteration 175: EE criterion =  3.595e-12  (not concave)
+Iteration 176: EE criterion =  3.588e-12  (not concave)
+Iteration 177: EE criterion =  3.580e-12  (not concave)
+Iteration 178: EE criterion =  3.572e-12  (not concave)
+Iteration 179: EE criterion =  3.565e-12  (not concave)
+Iteration 180: EE criterion =  3.558e-12  (not concave)
+Iteration 181: EE criterion =  3.550e-12  (not concave)
+Iteration 182: EE criterion =  3.543e-12  (not concave)
+Iteration 183: EE criterion =  3.536e-12  (not concave)
+Iteration 184: EE criterion =  3.528e-12  (not concave)
+Iteration 185: EE criterion =  3.521e-12  (not concave)
+Iteration 186: EE criterion =  3.514e-12  (not concave)
+Iteration 187: EE criterion =  3.507e-12  (not concave)
+Iteration 188: EE criterion =  3.500e-12  (not concave)
+Iteration 189: EE criterion =  3.493e-12  (not concave)
+Iteration 190: EE criterion =  3.486e-12  (not concave)
+Iteration 191: EE criterion =  3.480e-12  (not concave)
+Iteration 192: EE criterion =  3.473e-12  (not concave)
+Iteration 193: EE criterion =  3.466e-12  (not concave)
+Iteration 194: EE criterion =  3.460e-12  (not concave)
+Iteration 195: EE criterion =  3.453e-12  (not concave)
+Iteration 196: EE criterion =  3.446e-12  (not concave)
+Iteration 197: EE criterion =  3.440e-12  (not concave)
+Iteration 198: EE criterion =  3.433e-12  (not concave)
+Iteration 199: EE criterion =  3.427e-12  (not concave)
+Iteration 200: EE criterion =  3.421e-12  (not concave)
+Iteration 201: EE criterion =  3.414e-12  (not concave)
+Iteration 202: EE criterion =  3.408e-12  (not concave)
+Iteration 203: EE criterion =  3.402e-12  (not concave)
+Iteration 204: EE criterion =  3.396e-12  (not concave)
+Iteration 205: EE criterion =  3.390e-12  (not concave)
+Iteration 206: EE criterion =  3.383e-12  (not concave)
+Iteration 207: EE criterion =  3.377e-12  (not concave)
+Iteration 208: EE criterion =  3.371e-12  (not concave)
+Iteration 209: EE criterion =  3.365e-12  (not concave)
+Iteration 210: EE criterion =  3.360e-12  (not concave)
+Iteration 211: EE criterion =  3.354e-12  (not concave)
+Iteration 212: EE criterion =  3.348e-12  (not concave)
+Iteration 213: EE criterion =  3.342e-12  (not concave)
+Iteration 214: EE criterion =  3.336e-12  (not concave)
+Iteration 215: EE criterion =  3.330e-12  (not concave)
+Iteration 216: EE criterion =  3.325e-12  (not concave)
+Iteration 217: EE criterion =  3.319e-12  (not concave)
+Iteration 218: EE criterion =  3.313e-12  (not concave)
+Iteration 219: EE criterion =  3.308e-12  (not concave)
+Iteration 220: EE criterion =  3.302e-12  (not concave)
+Iteration 221: EE criterion =  3.297e-12  (not concave)
+Iteration 222: EE criterion =  3.291e-12  (not concave)
+Iteration 223: EE criterion =  3.286e-12  (not concave)
+Iteration 224: EE criterion =  3.280e-12  (not concave)
+Iteration 225: EE criterion =  3.275e-12  (not concave)
+Iteration 226: EE criterion =  3.270e-12  (not concave)
+Iteration 227: EE criterion =  3.264e-12  (not concave)
+Iteration 228: EE criterion =  3.259e-12  (not concave)
+Iteration 229: EE criterion =  3.254e-12  (not concave)
+Iteration 230: EE criterion =  3.248e-12  (not concave)
+Iteration 231: EE criterion =  3.243e-12  (not concave)
+Iteration 232: EE criterion =  3.238e-12  (not concave)
+Iteration 233: EE criterion =  3.233e-12  (not concave)
+Iteration 234: EE criterion =  3.228e-12  (not concave)
+Iteration 235: EE criterion =  3.223e-12  (not concave)
+Iteration 236: EE criterion =  3.218e-12  (not concave)
+Iteration 237: EE criterion =  3.213e-12  (not concave)
+Iteration 238: EE criterion =  3.208e-12  (not concave)
+Iteration 239: EE criterion =  3.203e-12  (not concave)
+Iteration 240: EE criterion =  3.198e-12  (not concave)
+Iteration 241: EE criterion =  3.193e-12  (not concave)
+Iteration 242: EE criterion =  3.188e-12  (not concave)
+Iteration 243: EE criterion =  3.183e-12  (not concave)
+Iteration 244: EE criterion =  3.178e-12  (not concave)
+Iteration 245: EE criterion =  3.173e-12  (not concave)
+Iteration 246: EE criterion =  3.168e-12  (not concave)
+Iteration 247: EE criterion =  3.164e-12  (not concave)
+Iteration 248: EE criterion =  3.159e-12  (not concave)
+Iteration 249: EE criterion =  3.154e-12  (not concave)
+Iteration 250: EE criterion =  3.149e-12  (not concave)
+Iteration 251: EE criterion =  3.145e-12  (not concave)
+Iteration 252: EE criterion =  3.140e-12  (not concave)
+Iteration 253: EE criterion =  3.135e-12  (not concave)
+Iteration 254: EE criterion =  3.131e-12  (not concave)
+Iteration 255: EE criterion =  3.126e-12  (not concave)
+Iteration 256: EE criterion =  3.122e-12  (not concave)
+Iteration 257: EE criterion =  3.117e-12  (not concave)
+Iteration 258: EE criterion =  3.112e-12  (not concave)
+Iteration 259: EE criterion =  3.108e-12  (not concave)
+Iteration 260: EE criterion =  3.103e-12  (not concave)
+Iteration 261: EE criterion =  3.099e-12  (not concave)
+Iteration 262: EE criterion =  3.095e-12  (not concave)
+Iteration 263: EE criterion =  3.090e-12  (not concave)
+Iteration 264: EE criterion =  3.086e-12  (not concave)
+Iteration 265: EE criterion =  3.081e-12  (not concave)
+Iteration 266: EE criterion =  3.077e-12  (not concave)
+Iteration 267: EE criterion =  3.073e-12  (not concave)
+Iteration 268: EE criterion =  3.068e-12  (not concave)
+Iteration 269: EE criterion =  3.064e-12  (not concave)
+Iteration 270: EE criterion =  3.060e-12  (not concave)
+Iteration 271: EE criterion =  3.055e-12  (not concave)
+Iteration 272: EE criterion =  3.051e-12  (not concave)
+Iteration 273: EE criterion =  3.047e-12  (not concave)
+Iteration 274: EE criterion =  3.043e-12  (not concave)
+Iteration 275: EE criterion =  3.039e-12  (not concave)
+Iteration 276: EE criterion =  3.034e-12  (not concave)
+Iteration 277: EE criterion =  3.030e-12  (not concave)
+Iteration 278: EE criterion =  3.026e-12  (not concave)
+Iteration 279: EE criterion =  3.022e-12  (not concave)
+Iteration 280: EE criterion =  3.018e-12  (not concave)
+Iteration 281: EE criterion =  3.014e-12  (not concave)
+Iteration 282: EE criterion =  3.010e-12  (not concave)
+Iteration 283: EE criterion =  3.006e-12  (not concave)
+Iteration 284: EE criterion =  3.002e-12  (not concave)
+Iteration 285: EE criterion =  2.998e-12  (not concave)
+Iteration 286: EE criterion =  2.994e-12  (not concave)
+Iteration 287: EE criterion =  2.990e-12  (not concave)
+Iteration 288: EE criterion =  2.986e-12  (not concave)
+Iteration 289: EE criterion =  2.982e-12  (not concave)
+Iteration 290: EE criterion =  2.978e-12  (not concave)
+Iteration 291: EE criterion =  2.974e-12  (not concave)
+Iteration 292: EE criterion =  2.970e-12  (not concave)
+Iteration 293: EE criterion =  2.966e-12  (not concave)
+Iteration 294: EE criterion =  2.962e-12  (not concave)
+Iteration 295: EE criterion =  2.958e-12  (not concave)
+Iteration 296: EE criterion =  2.954e-12  (not concave)
+Iteration 297: EE criterion =  2.951e-12  (not concave)
+Iteration 298: EE criterion =  2.947e-12  (not concave)
+Iteration 299: EE criterion =  2.943e-12  (not concave)
+Iteration 300: EE criterion =  2.939e-12  (not concave)
+convergence not achieved
+Warning: Variance matrix is nonsymmetric or highly singular.
+
+Treatment-effects estimation                    Number of obs     =        285
+Estimator      : IPW regression adjustment
+Outcome model  : logit
+Treatment model: logit
+------------------------------------------------------------------------------------------------
+                               |               Robust
+                   unfav_neuro | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------------------------+----------------------------------------------------------------
+ATE                            |
+                        expose |
+(1_exposure vs 0_nonexposure)  |   .0249473          .        .       .            .           .
+-------------------------------+----------------------------------------------------------------
+POmean                         |
+                        expose |
+                0_nonexposure  |   .1464774          .        .       .            .           .
+-------------------------------+----------------------------------------------------------------
+OME0                           |
+                           age |   .0344472          .        .       .            .           .
+                        female |   2.310864          .        .       .            .           .
+                      HR_cat_1 |   2.526015          .        .       .            .           .
+                      HR_cat_2 |     1.3951          .        .       .            .           .
+                      HR_cat_3 |   .7947137          .        .       .            .           .
+                      HR_cat_4 |          0  (omitted)
+      heart_rate_first24h_mean |   .0278213          .        .       .            .           .
+             mbp_first24h_mean |   .1135272          .        .       .            .           .
+       resp_rate_first24h_mean |  -.0199241          .        .       .            .           .
+            spo2_first24h_mean |   .3937658          .        .       .            .           .
+    charlson_comorbidity_index |  -.3221826          .        .       .            .           .
+lowest_gcs_motor_eyes_first24h |  -.2324876          .        .       .            .           .
+                         oasis |  -.0144764          .        .       .            .           .
+                        apsiii |   .0385329          .        .       .            .           .
+                   icu_weekend |   .8258285          .        .       .            .           .
+                         _cons |  -56.42984          .        .       .            .           .
+-------------------------------+----------------------------------------------------------------
+OME1                           |
+                           age |   .0560138          .        .       .            .           .
+                        female |   2.153641          .        .       .            .           .
+                      HR_cat_1 |   2.642268          .        .       .            .           .
+                      HR_cat_2 |   .3306454          .        .       .            .           .
+                      HR_cat_3 |   .5084386          .        .       .            .           .
+                      HR_cat_4 |          0  (omitted)
+      heart_rate_first24h_mean |   .0417695          .        .       .            .           .
+             mbp_first24h_mean |   .0250595          .        .       .            .           .
+       resp_rate_first24h_mean |  -.0225194          .        .       .            .           .
+            spo2_first24h_mean |   .1771806          .        .       .            .           .
+    charlson_comorbidity_index |   -.523084          .        .       .            .           .
+lowest_gcs_motor_eyes_first24h |  -15.66087          .        .       .            .           .
+                         oasis |   .1597752          .        .       .            .           .
+                        apsiii |   .0067918          .        .       .            .           .
+                   icu_weekend |  -.7804691          .        .       .            .           .
+                         _cons |  -1.963354          .        .       .            .           .
+-------------------------------+----------------------------------------------------------------
+TME1                           |
+                           age |  -.0211118          .        .       .            .           .
+                        female |   .3824117          .        .       .            .           .
+                      HR_cat_1 |   1.315266          .        .       .            .           .
+                      HR_cat_2 |    .652034          .        .       .            .           .
+                      HR_cat_3 |   2.448152          .        .       .            .           .
+                      HR_cat_4 |          0  (omitted)
+      heart_rate_first24h_mean |  -.0891268          .        .       .            .           .
+             mbp_first24h_mean |   .0548357          .        .       .            .           .
+       resp_rate_first24h_mean |   .1702425          .        .       .            .           .
+            spo2_first24h_mean |   .3404189          .        .       .            .           .
+    charlson_comorbidity_index |   .0183231          .        .       .            .           .
+lowest_gcs_motor_eyes_first24h |  -.7610716          .        .       .            .           .
+                         oasis |   .0249777          .        .       .            .           .
+                        apsiii |   .0132241          .        .       .            .           .
+                   icu_weekend |  -.0196329          .        .       .            .           .
+                         _cons |  -34.51925          .        .       .            .           .
+------------------------------------------------------------------------------------------------
+Warning: Convergence not achieved.
+
+.         
+. ***********regression adjustment
+. //teffects ra to estimate the ATE on the treated (ATET)-USES ONLY THE SUBJECTS WHO WERE OBSERVED IN THE TREATMENT 
+> GROUP
+. 
+.         teffects ra (unfav_neuro $xVarAll, logit) (expose), pom
+note: HR_cat_4 omitted because of collinearity.
+
+Iteration 0:   EE criterion =  1.764e-10  (not concave)
+Iteration 1:   EE criterion =  5.788e-11  (not concave)
+Iteration 2:   EE criterion =  2.784e-11  (not concave)
+Iteration 3:   EE criterion =  1.686e-11  (not concave)
+Iteration 4:   EE criterion =  1.058e-11  (not concave)
+Iteration 5:   EE criterion =  9.204e-12  (not concave)
+Iteration 6:   EE criterion =  8.424e-12  (not concave)
+Iteration 7:   EE criterion =  7.831e-12  (not concave)
+Iteration 8:   EE criterion =  7.398e-12  (not concave)
+Iteration 9:   EE criterion =  7.056e-12  (not concave)
+Iteration 10:  EE criterion =  6.780e-12  (not concave)
+Iteration 11:  EE criterion =  6.538e-12  (not concave)
+Iteration 12:  EE criterion =  6.336e-12  (not concave)
+Iteration 13:  EE criterion =  6.156e-12  (not concave)
+Iteration 14:  EE criterion =  5.996e-12  (not concave)
+Iteration 15:  EE criterion =  5.851e-12  (not concave)
+Iteration 16:  EE criterion =  5.719e-12  (not concave)
+Iteration 17:  EE criterion =  5.599e-12  (not concave)
+Iteration 18:  EE criterion =  5.487e-12  (not concave)
+Iteration 19:  EE criterion =  5.383e-12  (not concave)
+Iteration 20:  EE criterion =  5.286e-12  (not concave)
+Iteration 21:  EE criterion =  5.195e-12  (not concave)
+Iteration 22:  EE criterion =  5.110e-12  (not concave)
+Iteration 23:  EE criterion =  5.029e-12  (not concave)
+Iteration 24:  EE criterion =  4.952e-12  (not concave)
+Iteration 25:  EE criterion =  4.879e-12  (not concave)
+Iteration 26:  EE criterion =  4.809e-12  (not concave)
+Iteration 27:  EE criterion =  4.742e-12  (not concave)
+Iteration 28:  EE criterion =  4.678e-12  (not concave)
+Iteration 29:  EE criterion =  4.617e-12  (not concave)
+Iteration 30:  EE criterion =  4.558e-12  (not concave)
+Iteration 31:  EE criterion =  4.501e-12  (not concave)
+Iteration 32:  EE criterion =  4.446e-12  (not concave)
+Iteration 33:  EE criterion =  4.393e-12  (not concave)
+Iteration 34:  EE criterion =  4.342e-12  (not concave)
+Iteration 35:  EE criterion =  4.293e-12  (not concave)
+Iteration 36:  EE criterion =  4.245e-12  (not concave)
+Iteration 37:  EE criterion =  4.199e-12  (not concave)
+Iteration 38:  EE criterion =  4.155e-12  (not concave)
+Iteration 39:  EE criterion =  4.111e-12  (not concave)
+Iteration 40:  EE criterion =  4.070e-12  (not concave)
+Iteration 41:  EE criterion =  4.029e-12  (not concave)
+Iteration 42:  EE criterion =  3.989e-12  (not concave)
+Iteration 43:  EE criterion =  3.951e-12  (not concave)
+Iteration 44:  EE criterion =  3.914e-12  (not concave)
+Iteration 45:  EE criterion =  3.878e-12  (not concave)
+Iteration 46:  EE criterion =  3.843e-12  (not concave)
+Iteration 47:  EE criterion =  3.809e-12  (not concave)
+Iteration 48:  EE criterion =  3.776e-12  (not concave)
+Iteration 49:  EE criterion =  3.743e-12  (not concave)
+Iteration 50:  EE criterion =  3.712e-12  (not concave)
+Iteration 51:  EE criterion =  3.682e-12  (not concave)
+Iteration 52:  EE criterion =  3.652e-12  (not concave)
+Iteration 53:  EE criterion =  3.623e-12  (not concave)
+Iteration 54:  EE criterion =  3.595e-12  (not concave)
+Iteration 55:  EE criterion =  3.568e-12  (not concave)
+Iteration 56:  EE criterion =  3.541e-12  (not concave)
+Iteration 57:  EE criterion =  3.515e-12  (not concave)
+Iteration 58:  EE criterion =  3.490e-12  (not concave)
+Iteration 59:  EE criterion =  3.465e-12  (not concave)
+Iteration 60:  EE criterion =  3.441e-12  (not concave)
+Iteration 61:  EE criterion =  3.418e-12  (not concave)
+Iteration 62:  EE criterion =  3.395e-12  (not concave)
+Iteration 63:  EE criterion =  3.372e-12  (not concave)
+Iteration 64:  EE criterion =  3.351e-12  (not concave)
+Iteration 65:  EE criterion =  3.330e-12  (not concave)
+Iteration 66:  EE criterion =  3.309e-12  (not concave)
+Iteration 67:  EE criterion =  3.289e-12  (not concave)
+Iteration 68:  EE criterion =  3.269e-12  (not concave)
+Iteration 69:  EE criterion =  3.250e-12  (not concave)
+Iteration 70:  EE criterion =  3.231e-12  (not concave)
+Iteration 71:  EE criterion =  3.213e-12  (not concave)
+Iteration 72:  EE criterion =  3.195e-12  (not concave)
+Iteration 73:  EE criterion =  3.177e-12  (not concave)
+Iteration 74:  EE criterion =  3.160e-12  (not concave)
+Iteration 75:  EE criterion =  3.143e-12  (not concave)
+Iteration 76:  EE criterion =  3.127e-12  (not concave)
+Iteration 77:  EE criterion =  3.111e-12  (not concave)
+Iteration 78:  EE criterion =  3.095e-12  (not concave)
+Iteration 79:  EE criterion =  3.080e-12  (not concave)
+Iteration 80:  EE criterion =  3.065e-12  (not concave)
+Iteration 81:  EE criterion =  3.050e-12  (not concave)
+Iteration 82:  EE criterion =  3.036e-12  (not concave)
+Iteration 83:  EE criterion =  3.022e-12  (not concave)
+Iteration 84:  EE criterion =  3.008e-12  (not concave)
+Iteration 85:  EE criterion =  2.995e-12  (not concave)
+Iteration 86:  EE criterion =  2.981e-12  (not concave)
+Iteration 87:  EE criterion =  2.968e-12  (not concave)
+Iteration 88:  EE criterion =  2.956e-12  (not concave)
+Iteration 89:  EE criterion =  2.943e-12  (not concave)
+Iteration 90:  EE criterion =  2.931e-12  (not concave)
+Iteration 91:  EE criterion =  2.919e-12  (not concave)
+Iteration 92:  EE criterion =  2.908e-12  (not concave)
+Iteration 93:  EE criterion =  2.896e-12  (not concave)
+Iteration 94:  EE criterion =  2.885e-12  (not concave)
+Iteration 95:  EE criterion =  2.874e-12  (not concave)
+Iteration 96:  EE criterion =  2.863e-12  (not concave)
+Iteration 97:  EE criterion =  2.852e-12  (not concave)
+Iteration 98:  EE criterion =  2.842e-12  (not concave)
+Iteration 99:  EE criterion =  2.832e-12  (not concave)
+Iteration 100: EE criterion =  2.822e-12  (not concave)
+Iteration 101: EE criterion =  2.812e-12  (not concave)
+Iteration 102: EE criterion =  2.802e-12  (not concave)
+Iteration 103: EE criterion =  2.793e-12  (not concave)
+Iteration 104: EE criterion =  2.783e-12  (not concave)
+Iteration 105: EE criterion =  2.774e-12  (not concave)
+Iteration 106: EE criterion =  2.765e-12  (not concave)
+Iteration 107: EE criterion =  2.756e-12  (not concave)
+Iteration 108: EE criterion =  2.747e-12  (not concave)
+Iteration 109: EE criterion =  2.739e-12  (not concave)
+Iteration 110: EE criterion =  2.730e-12  (not concave)
+Iteration 111: EE criterion =  2.722e-12  (not concave)
+Iteration 112: EE criterion =  2.714e-12  (not concave)
+Iteration 113: EE criterion =  2.706e-12  (not concave)
+Iteration 114: EE criterion =  2.698e-12  (not concave)
+Iteration 115: EE criterion =  2.690e-12  (not concave)
+Iteration 116: EE criterion =  2.683e-12  (not concave)
+Iteration 117: EE criterion =  2.675e-12  (not concave)
+Iteration 118: EE criterion =  2.668e-12  (not concave)
+Iteration 119: EE criterion =  2.660e-12  (not concave)
+Iteration 120: EE criterion =  2.653e-12  (not concave)
+Iteration 121: EE criterion =  2.646e-12  (not concave)
+Iteration 122: EE criterion =  2.639e-12  (not concave)
+Iteration 123: EE criterion =  2.632e-12  (not concave)
+Iteration 124: EE criterion =  2.625e-12  (not concave)
+Iteration 125: EE criterion =  2.619e-12  (not concave)
+Iteration 126: EE criterion =  2.612e-12  (not concave)
+Iteration 127: EE criterion =  2.606e-12  (not concave)
+Iteration 128: EE criterion =  2.599e-12  (not concave)
+Iteration 129: EE criterion =  2.593e-12  (not concave)
+Iteration 130: EE criterion =  2.587e-12  (not concave)
+Iteration 131: EE criterion =  2.580e-12  (not concave)
+Iteration 132: EE criterion =  2.574e-12  (not concave)
+Iteration 133: EE criterion =  2.568e-12  (not concave)
+Iteration 134: EE criterion =  2.562e-12  (not concave)
+Iteration 135: EE criterion =  2.557e-12  (not concave)
+Iteration 136: EE criterion =  2.551e-12  (not concave)
+Iteration 137: EE criterion =  2.545e-12  (not concave)
+Iteration 138: EE criterion =  2.540e-12  (not concave)
+Iteration 139: EE criterion =  2.534e-12  (not concave)
+Iteration 140: EE criterion =  2.529e-12  (not concave)
+Iteration 141: EE criterion =  2.523e-12  (not concave)
+Iteration 142: EE criterion =  2.518e-12  (not concave)
+Iteration 143: EE criterion =  2.513e-12  (not concave)
+Iteration 144: EE criterion =  2.507e-12  (not concave)
+Iteration 145: EE criterion =  2.502e-12  (not concave)
+Iteration 146: EE criterion =  2.497e-12  (not concave)
+Iteration 147: EE criterion =  2.492e-12  (not concave)
+Iteration 148: EE criterion =  2.487e-12  (not concave)
+Iteration 149: EE criterion =  2.482e-12  (not concave)
+Iteration 150: EE criterion =  2.477e-12  (not concave)
+Iteration 151: EE criterion =  2.472e-12  (not concave)
+Iteration 152: EE criterion =  2.468e-12  (not concave)
+Iteration 153: EE criterion =  2.463e-12  (not concave)
+Iteration 154: EE criterion =  2.458e-12  (not concave)
+Iteration 155: EE criterion =  2.454e-12  (not concave)
+Iteration 156: EE criterion =  2.449e-12  (not concave)
+Iteration 157: EE criterion =  2.445e-12  (not concave)
+Iteration 158: EE criterion =  2.440e-12  (not concave)
+Iteration 159: EE criterion =  2.436e-12  (not concave)
+Iteration 160: EE criterion =  2.431e-12  (not concave)
+Iteration 161: EE criterion =  2.427e-12  (not concave)
+Iteration 162: EE criterion =  2.423e-12  (not concave)
+Iteration 163: EE criterion =  2.418e-12  (not concave)
+Iteration 164: EE criterion =  2.414e-12  (not concave)
+Iteration 165: EE criterion =  2.410e-12  (not concave)
+Iteration 166: EE criterion =  2.406e-12  (not concave)
+Iteration 167: EE criterion =  2.402e-12  (not concave)
+Iteration 168: EE criterion =  2.398e-12  (not concave)
+Iteration 169: EE criterion =  2.394e-12  (not concave)
+Iteration 170: EE criterion =  2.390e-12  (not concave)
+Iteration 171: EE criterion =  2.386e-12  (not concave)
+Iteration 172: EE criterion =  2.382e-12  (not concave)
+Iteration 173: EE criterion =  2.378e-12  (not concave)
+Iteration 174: EE criterion =  2.374e-12  (not concave)
+Iteration 175: EE criterion =  2.370e-12  (not concave)
+Iteration 176: EE criterion =  2.367e-12  (not concave)
+Iteration 177: EE criterion =  2.363e-12  (not concave)
+Iteration 178: EE criterion =  2.359e-12  (not concave)
+Iteration 179: EE criterion =  2.356e-12  (not concave)
+Iteration 180: EE criterion =  2.352e-12  (not concave)
+Iteration 181: EE criterion =  2.348e-12  (not concave)
+Iteration 182: EE criterion =  2.345e-12  (not concave)
+Iteration 183: EE criterion =  2.341e-12  (not concave)
+Iteration 184: EE criterion =  2.338e-12  (not concave)
+Iteration 185: EE criterion =  2.334e-12  (not concave)
+Iteration 186: EE criterion =  2.331e-12  (not concave)
+Iteration 187: EE criterion =  2.327e-12  (not concave)
+Iteration 188: EE criterion =  2.324e-12  (not concave)
+Iteration 189: EE criterion =  2.320e-12  (not concave)
+Iteration 190: EE criterion =  2.317e-12  (not concave)
+Iteration 191: EE criterion =  2.314e-12  (not concave)
+Iteration 192: EE criterion =  2.310e-12  (not concave)
+Iteration 193: EE criterion =  2.307e-12  (not concave)
+Iteration 194: EE criterion =  2.304e-12  (not concave)
+Iteration 195: EE criterion =  2.301e-12  (not concave)
+Iteration 196: EE criterion =  2.297e-12  (not concave)
+Iteration 197: EE criterion =  2.294e-12  (not concave)
+Iteration 198: EE criterion =  2.291e-12  (not concave)
+Iteration 199: EE criterion =  2.288e-12  (not concave)
+Iteration 200: EE criterion =  2.285e-12  (not concave)
+Iteration 201: EE criterion =  2.282e-12  (not concave)
+Iteration 202: EE criterion =  2.279e-12  (not concave)
+Iteration 203: EE criterion =  2.276e-12  (not concave)
+Iteration 204: EE criterion =  2.273e-12  (not concave)
+Iteration 205: EE criterion =  2.270e-12  (not concave)
+Iteration 206: EE criterion =  2.267e-12  (not concave)
+Iteration 207: EE criterion =  2.264e-12  (not concave)
+Iteration 208: EE criterion =  2.261e-12  (not concave)
+Iteration 209: EE criterion =  2.258e-12  (not concave)
+Iteration 210: EE criterion =  2.255e-12  (not concave)
+Iteration 211: EE criterion =  2.252e-12  (not concave)
+Iteration 212: EE criterion =  2.249e-12  (not concave)
+Iteration 213: EE criterion =  2.246e-12  (not concave)
+Iteration 214: EE criterion =  2.243e-12  (not concave)
+Iteration 215: EE criterion =  2.241e-12  (not concave)
+Iteration 216: EE criterion =  2.238e-12  (not concave)
+Iteration 217: EE criterion =  2.235e-12  (not concave)
+Iteration 218: EE criterion =  2.232e-12  (not concave)
+Iteration 219: EE criterion =  2.230e-12  (not concave)
+Iteration 220: EE criterion =  2.227e-12  (not concave)
+Iteration 221: EE criterion =  2.224e-12  (not concave)
+Iteration 222: EE criterion =  2.221e-12  (not concave)
+Iteration 223: EE criterion =  2.219e-12  (not concave)
+Iteration 224: EE criterion =  2.216e-12  (not concave)
+Iteration 225: EE criterion =  2.213e-12  (not concave)
+Iteration 226: EE criterion =  2.211e-12  (not concave)
+Iteration 227: EE criterion =  2.208e-12  (not concave)
+Iteration 228: EE criterion =  2.206e-12  (not concave)
+Iteration 229: EE criterion =  2.203e-12  (not concave)
+Iteration 230: EE criterion =  2.200e-12  (not concave)
+Iteration 231: EE criterion =  2.198e-12  (not concave)
+Iteration 232: EE criterion =  2.195e-12  (not concave)
+Iteration 233: EE criterion =  2.193e-12  (not concave)
+Iteration 234: EE criterion =  2.190e-12  (not concave)
+Iteration 235: EE criterion =  2.188e-12  (not concave)
+Iteration 236: EE criterion =  2.185e-12  (not concave)
+Iteration 237: EE criterion =  2.183e-12  (not concave)
+Iteration 238: EE criterion =  2.180e-12  (not concave)
+Iteration 239: EE criterion =  2.178e-12  (not concave)
+Iteration 240: EE criterion =  2.175e-12  (not concave)
+Iteration 241: EE criterion =  2.173e-12  (not concave)
+Iteration 242: EE criterion =  2.171e-12  (not concave)
+Iteration 243: EE criterion =  2.168e-12  (not concave)
+Iteration 244: EE criterion =  2.166e-12  (not concave)
+Iteration 245: EE criterion =  2.164e-12  (not concave)
+Iteration 246: EE criterion =  2.161e-12  (not concave)
+Iteration 247: EE criterion =  2.159e-12  (not concave)
+Iteration 248: EE criterion =  2.157e-12  (not concave)
+Iteration 249: EE criterion =  2.154e-12  (not concave)
+Iteration 250: EE criterion =  2.152e-12  (not concave)
+Iteration 251: EE criterion =  2.150e-12  (not concave)
+Iteration 252: EE criterion =  2.147e-12  (not concave)
+Iteration 253: EE criterion =  2.145e-12  (not concave)
+Iteration 254: EE criterion =  2.143e-12  (not concave)
+Iteration 255: EE criterion =  2.141e-12  (not concave)
+Iteration 256: EE criterion =  2.138e-12  (not concave)
+Iteration 257: EE criterion =  2.136e-12  (not concave)
+Iteration 258: EE criterion =  2.134e-12  (not concave)
+Iteration 259: EE criterion =  2.132e-12  (not concave)
+Iteration 260: EE criterion =  2.130e-12  (not concave)
+Iteration 261: EE criterion =  2.127e-12  (not concave)
+Iteration 262: EE criterion =  2.125e-12  (not concave)
+Iteration 263: EE criterion =  2.123e-12  (not concave)
+Iteration 264: EE criterion =  2.121e-12  (not concave)
+Iteration 265: EE criterion =  2.119e-12  (not concave)
+Iteration 266: EE criterion =  2.117e-12  (not concave)
+Iteration 267: EE criterion =  2.115e-12  (not concave)
+Iteration 268: EE criterion =  2.113e-12  (not concave)
+Iteration 269: EE criterion =  2.110e-12  (not concave)
+Iteration 270: EE criterion =  2.108e-12  (not concave)
+Iteration 271: EE criterion =  2.106e-12  (not concave)
+Iteration 272: EE criterion =  2.104e-12  (not concave)
+Iteration 273: EE criterion =  2.102e-12  (not concave)
+Iteration 274: EE criterion =  2.100e-12  (not concave)
+Iteration 275: EE criterion =  2.098e-12  (not concave)
+Iteration 276: EE criterion =  2.096e-12  (not concave)
+Iteration 277: EE criterion =  2.094e-12  (not concave)
+Iteration 278: EE criterion =  2.092e-12  (not concave)
+Iteration 279: EE criterion =  2.090e-12  (not concave)
+Iteration 280: EE criterion =  2.088e-12  (not concave)
+Iteration 281: EE criterion =  2.086e-12  (not concave)
+Iteration 282: EE criterion =  2.084e-12  (not concave)
+Iteration 283: EE criterion =  2.082e-12  (not concave)
+Iteration 284: EE criterion =  2.080e-12  (not concave)
+Iteration 285: EE criterion =  2.078e-12  (not concave)
+Iteration 286: EE criterion =  2.076e-12  (not concave)
+Iteration 287: EE criterion =  2.075e-12  (not concave)
+Iteration 288: EE criterion =  2.073e-12  (not concave)
+Iteration 289: EE criterion =  2.071e-12  (not concave)
+Iteration 290: EE criterion =  2.069e-12  (not concave)
+Iteration 291: EE criterion =  2.067e-12  (not concave)
+Iteration 292: EE criterion =  2.065e-12  (not concave)
+Iteration 293: EE criterion =  2.063e-12  (not concave)
+Iteration 294: EE criterion =  2.061e-12  (not concave)
+Iteration 295: EE criterion =  2.059e-12  (not concave)
+Iteration 296: EE criterion =  2.058e-12  (not concave)
+Iteration 297: EE criterion =  2.056e-12  (not concave)
+Iteration 298: EE criterion =  2.054e-12  (not concave)
+Iteration 299: EE criterion =  2.052e-12  (not concave)
+Iteration 300: EE criterion =  2.050e-12  (not concave)
+convergence not achieved
+Warning: Variance matrix is nonsymmetric or highly singular.
+
+Treatment-effects estimation                    Number of obs     =        285
+Estimator      : regression adjustment
+Outcome model  : logit
+Treatment model: none
+------------------------------------------------------------------------------------------------
+                               |               Robust
+                   unfav_neuro | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------------------------+----------------------------------------------------------------
+POmeans                        |
+                        expose |
+                0_nonexposure  |   .1336528          .        .       .            .           .
+                   1_exposure  |   .1470752          .        .       .            .           .
+------------------------------------------------------------------------------------------------
+Warning: Convergence not achieved.
+
+. 
+. ***********ipw model
+.         //ipw (propensity score creation and treatment effect estimation are performed concurrently ) 1.09 0.85 1.
+> 40
+.         teffects ipw (unfav_neuro) (expose $xVarPSW, logit), pom vce(robust)
+note: HR_cat_4 omitted because of collinearity.
+
+Iteration 0:   EE criterion =  8.444e-18  
+Iteration 1:   EE criterion =  1.659e-31  
+
+Treatment-effects estimation                    Number of obs     =        285
+Estimator      : inverse-probability weights
+Outcome model  : weighted mean
+Treatment model: logit
+------------------------------------------------------------------------------------------------
+                               |               Robust
+                   unfav_neuro | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------------------------+----------------------------------------------------------------
+POmeans                        |
+                        expose |
+                0_nonexposure  |   .1285908   .0343127     3.75   0.000     .0613391    .1958424
+                   1_exposure  |   .2082095   .0618649     3.37   0.001     .0869566    .3294625
+------------------------------------------------------------------------------------------------
+
+.         teffects ipw (unfav_neuro) (expose $xVarPSW, logit), pom coeflegend
+note: HR_cat_4 omitted because of collinearity.
+
+Iteration 0:   EE criterion =  8.444e-18  
+Iteration 1:   EE criterion =  1.659e-31  
+
+Treatment-effects estimation                    Number of obs     =        285
+Estimator      : inverse-probability weights
+Outcome model  : weighted mean
+Treatment model: logit
+------------------------------------------------------------------------------------------------
+                   unfav_neuro | Coefficient  Legend
+-------------------------------+----------------------------------------------------------------
+POmeans                        |
+                        expose |
+                0_nonexposure  |   .1285908  _b[POmeans:0bn.expose]
+                   1_exposure  |   .2082095  _b[POmeans:1.expose]
+------------------------------------------------------------------------------------------------
+
+.         nlcom log( _b[POmeans:1.expose] / _b[POmeans:0bn.expose])
+
+       _nl_1: log( _b[POmeans:1.expose] / _b[POmeans:0bn.expose])
+
+------------------------------------------------------------------------------
+ unfav_neuro | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+       _nl_1 |   .4819099   .3911731     1.23   0.218    -.2847752    1.248595
+------------------------------------------------------------------------------
+
+.         di exp(.4819099)
+1.6191639
+
+.         di exp(-.2847752)
+.75218333
+
+.         di exp(1.248595)
+3.4854425
+
+.         
+. //Augmented-IPW
+.         teffects aipw (unfav_neuro $xVarAll,logit) (expose $xVarPSW,logit), pom vce(robust)
+note: HR_cat_4 omitted because of collinearity.
+note: HR_cat_4 omitted because of collinearity.
+
+Iteration 0:   EE criterion =  1.764e-10  (not concave)
+Iteration 1:   EE criterion =  2.944e-11  (not concave)
+Iteration 2:   EE criterion =  1.065e-11  (not concave)
+Iteration 3:   EE criterion =  8.363e-12  (not concave)
+Iteration 4:   EE criterion =  7.089e-12  (not concave)
+Iteration 5:   EE criterion =  6.461e-12  (not concave)
+Iteration 6:   EE criterion =  6.041e-12  (not concave)
+Iteration 7:   EE criterion =  5.709e-12  (not concave)
+Iteration 8:   EE criterion =  5.428e-12  (not concave)
+Iteration 9:   EE criterion =  5.188e-12  (not concave)
+Iteration 10:  EE criterion =  4.978e-12  (not concave)
+Iteration 11:  EE criterion =  4.790e-12  (not concave)
+Iteration 12:  EE criterion =  4.622e-12  (not concave)
+Iteration 13:  EE criterion =  4.469e-12  (not concave)
+Iteration 14:  EE criterion =  4.330e-12  (not concave)
+Iteration 15:  EE criterion =  4.202e-12  (not concave)
+Iteration 16:  EE criterion =  4.085e-12  (not concave)
+Iteration 17:  EE criterion =  3.977e-12  (not concave)
+Iteration 18:  EE criterion =  3.876e-12  (not concave)
+Iteration 19:  EE criterion =  3.784e-12  (not concave)
+Iteration 20:  EE criterion =  3.698e-12  (not concave)
+Iteration 21:  EE criterion =  3.618e-12  (not concave)
+Iteration 22:  EE criterion =  3.543e-12  (not concave)
+Iteration 23:  EE criterion =  3.473e-12  (not concave)
+Iteration 24:  EE criterion =  3.408e-12  (not concave)
+Iteration 25:  EE criterion =  3.348e-12  (not concave)
+Iteration 26:  EE criterion =  3.291e-12  (not concave)
+Iteration 27:  EE criterion =  3.238e-12  (not concave)
+Iteration 28:  EE criterion =  3.187e-12  (not concave)
+Iteration 29:  EE criterion =  3.140e-12  (not concave)
+Iteration 30:  EE criterion =  3.096e-12  (not concave)
+Iteration 31:  EE criterion =  3.054e-12  (not concave)
+Iteration 32:  EE criterion =  3.015e-12  (not concave)
+Iteration 33:  EE criterion =  2.978e-12  (not concave)
+Iteration 34:  EE criterion =  2.943e-12  (not concave)
+Iteration 35:  EE criterion =  2.909e-12  (not concave)
+Iteration 36:  EE criterion =  2.878e-12  (not concave)
+Iteration 37:  EE criterion =  2.848e-12  (not concave)
+Iteration 38:  EE criterion =  2.819e-12  (not concave)
+Iteration 39:  EE criterion =  2.792e-12  (not concave)
+Iteration 40:  EE criterion =  2.766e-12  (not concave)
+Iteration 41:  EE criterion =  2.741e-12  (not concave)
+Iteration 42:  EE criterion =  2.718e-12  (not concave)
+Iteration 43:  EE criterion =  2.695e-12  (not concave)
+Iteration 44:  EE criterion =  2.674e-12  (not concave)
+Iteration 45:  EE criterion =  2.653e-12  (not concave)
+Iteration 46:  EE criterion =  2.633e-12  (not concave)
+Iteration 47:  EE criterion =  2.614e-12  (not concave)
+Iteration 48:  EE criterion =  2.596e-12  (not concave)
+Iteration 49:  EE criterion =  2.579e-12  (not concave)
+Iteration 50:  EE criterion =  2.562e-12  (not concave)
+Iteration 51:  EE criterion =  2.545e-12  (not concave)
+Iteration 52:  EE criterion =  2.530e-12  (not concave)
+Iteration 53:  EE criterion =  2.514e-12  (not concave)
+Iteration 54:  EE criterion =  2.500e-12  (not concave)
+Iteration 55:  EE criterion =  2.485e-12  (not concave)
+Iteration 56:  EE criterion =  2.472e-12  (not concave)
+Iteration 57:  EE criterion =  2.458e-12  (not concave)
+Iteration 58:  EE criterion =  2.445e-12  (not concave)
+Iteration 59:  EE criterion =  2.433e-12  (not concave)
+Iteration 60:  EE criterion =  2.420e-12  (not concave)
+Iteration 61:  EE criterion =  2.408e-12  (not concave)
+Iteration 62:  EE criterion =  2.397e-12  (not concave)
+Iteration 63:  EE criterion =  2.386e-12  (not concave)
+Iteration 64:  EE criterion =  2.375e-12  (not concave)
+Iteration 65:  EE criterion =  2.364e-12  (not concave)
+Iteration 66:  EE criterion =  2.353e-12  (not concave)
+Iteration 67:  EE criterion =  2.343e-12  (not concave)
+Iteration 68:  EE criterion =  2.333e-12  (not concave)
+Iteration 69:  EE criterion =  2.323e-12  (not concave)
+Iteration 70:  EE criterion =  2.314e-12  (not concave)
+Iteration 71:  EE criterion =  2.304e-12  (not concave)
+Iteration 72:  EE criterion =  2.295e-12  (not concave)
+Iteration 73:  EE criterion =  2.286e-12  (not concave)
+Iteration 74:  EE criterion =  2.278e-12  (not concave)
+Iteration 75:  EE criterion =  2.269e-12  (not concave)
+Iteration 76:  EE criterion =  2.261e-12  (not concave)
+Iteration 77:  EE criterion =  2.252e-12  (not concave)
+Iteration 78:  EE criterion =  2.244e-12  (not concave)
+Iteration 79:  EE criterion =  2.236e-12  (not concave)
+Iteration 80:  EE criterion =  2.228e-12  (not concave)
+Iteration 81:  EE criterion =  2.221e-12  (not concave)
+Iteration 82:  EE criterion =  2.213e-12  (not concave)
+Iteration 83:  EE criterion =  2.206e-12  (not concave)
+Iteration 84:  EE criterion =  2.198e-12  (not concave)
+Iteration 85:  EE criterion =  2.191e-12  (not concave)
+Iteration 86:  EE criterion =  2.184e-12  (not concave)
+Iteration 87:  EE criterion =  2.177e-12  (not concave)
+Iteration 88:  EE criterion =  2.170e-12  (not concave)
+Iteration 89:  EE criterion =  2.164e-12  (not concave)
+Iteration 90:  EE criterion =  2.157e-12  (not concave)
+Iteration 91:  EE criterion =  2.150e-12  (not concave)
+Iteration 92:  EE criterion =  2.144e-12  (not concave)
+Iteration 93:  EE criterion =  2.138e-12  (not concave)
+Iteration 94:  EE criterion =  2.131e-12  (not concave)
+Iteration 95:  EE criterion =  2.125e-12  (not concave)
+Iteration 96:  EE criterion =  2.119e-12  (not concave)
+Iteration 97:  EE criterion =  2.113e-12  (not concave)
+Iteration 98:  EE criterion =  2.107e-12  (not concave)
+Iteration 99:  EE criterion =  2.101e-12  (not concave)
+Iteration 100: EE criterion =  2.096e-12  (not concave)
+Iteration 101: EE criterion =  2.090e-12  (not concave)
+Iteration 102: EE criterion =  2.084e-12  (not concave)
+Iteration 103: EE criterion =  2.079e-12  (not concave)
+Iteration 104: EE criterion =  2.073e-12  (not concave)
+Iteration 105: EE criterion =  2.068e-12  (not concave)
+Iteration 106: EE criterion =  2.063e-12  (not concave)
+Iteration 107: EE criterion =  2.057e-12  (not concave)
+Iteration 108: EE criterion =  2.052e-12  (not concave)
+Iteration 109: EE criterion =  2.047e-12  (not concave)
+Iteration 110: EE criterion =  2.042e-12  (not concave)
+Iteration 111: EE criterion =  2.037e-12  (not concave)
+Iteration 112: EE criterion =  2.032e-12  (not concave)
+Iteration 113: EE criterion =  2.027e-12  (not concave)
+Iteration 114: EE criterion =  2.022e-12  (not concave)
+Iteration 115: EE criterion =  2.018e-12  (not concave)
+Iteration 116: EE criterion =  2.013e-12  (not concave)
+Iteration 117: EE criterion =  2.008e-12  (not concave)
+Iteration 118: EE criterion =  2.004e-12  (not concave)
+Iteration 119: EE criterion =  1.999e-12  (not concave)
+Iteration 120: EE criterion =  1.995e-12  (not concave)
+Iteration 121: EE criterion =  1.990e-12  (not concave)
+Iteration 122: EE criterion =  1.986e-12  (not concave)
+Iteration 123: EE criterion =  1.982e-12  (not concave)
+Iteration 124: EE criterion =  1.977e-12  (not concave)
+Iteration 125: EE criterion =  1.973e-12  (not concave)
+Iteration 126: EE criterion =  1.969e-12  (not concave)
+Iteration 127: EE criterion =  1.965e-12  (not concave)
+Iteration 128: EE criterion =  1.961e-12  (not concave)
+Iteration 129: EE criterion =  1.957e-12  (not concave)
+Iteration 130: EE criterion =  1.953e-12  (not concave)
+Iteration 131: EE criterion =  1.949e-12  (not concave)
+Iteration 132: EE criterion =  1.945e-12  (not concave)
+Iteration 133: EE criterion =  1.941e-12  (not concave)
+Iteration 134: EE criterion =  1.937e-12  (not concave)
+Iteration 135: EE criterion =  1.933e-12  (not concave)
+Iteration 136: EE criterion =  1.929e-12  (not concave)
+Iteration 137: EE criterion =  1.926e-12  (not concave)
+Iteration 138: EE criterion =  1.922e-12  (not concave)
+Iteration 139: EE criterion =  1.918e-12  (not concave)
+Iteration 140: EE criterion =  1.915e-12  (not concave)
+Iteration 141: EE criterion =  1.911e-12  (not concave)
+Iteration 142: EE criterion =  1.908e-12  (not concave)
+Iteration 143: EE criterion =  1.904e-12  (not concave)
+Iteration 144: EE criterion =  1.901e-12  (not concave)
+Iteration 145: EE criterion =  1.897e-12  (not concave)
+Iteration 146: EE criterion =  1.894e-12  (not concave)
+Iteration 147: EE criterion =  1.891e-12  (not concave)
+Iteration 148: EE criterion =  1.887e-12  (not concave)
+Iteration 149: EE criterion =  1.884e-12  (not concave)
+Iteration 150: EE criterion =  1.881e-12  (not concave)
+Iteration 151: EE criterion =  1.878e-12  (not concave)
+Iteration 152: EE criterion =  1.875e-12  (not concave)
+Iteration 153: EE criterion =  1.872e-12  (not concave)
+Iteration 154: EE criterion =  1.868e-12  (not concave)
+Iteration 155: EE criterion =  1.865e-12  (not concave)
+Iteration 156: EE criterion =  1.862e-12  (not concave)
+Iteration 157: EE criterion =  1.859e-12  (not concave)
+Iteration 158: EE criterion =  1.856e-12  (not concave)
+Iteration 159: EE criterion =  1.853e-12  (not concave)
+Iteration 160: EE criterion =  1.850e-12  (not concave)
+Iteration 161: EE criterion =  1.848e-12  (not concave)
+Iteration 162: EE criterion =  1.845e-12  (not concave)
+Iteration 163: EE criterion =  1.842e-12  (not concave)
+Iteration 164: EE criterion =  1.839e-12  (not concave)
+Iteration 165: EE criterion =  1.836e-12  (not concave)
+Iteration 166: EE criterion =  1.834e-12  (not concave)
+Iteration 167: EE criterion =  1.831e-12  (not concave)
+Iteration 168: EE criterion =  1.828e-12  (not concave)
+Iteration 169: EE criterion =  1.825e-12  (not concave)
+Iteration 170: EE criterion =  1.823e-12  (not concave)
+Iteration 171: EE criterion =  1.820e-12  (not concave)
+Iteration 172: EE criterion =  1.818e-12  (not concave)
+Iteration 173: EE criterion =  1.815e-12  (not concave)
+Iteration 174: EE criterion =  1.813e-12  (not concave)
+Iteration 175: EE criterion =  1.810e-12  (not concave)
+Iteration 176: EE criterion =  1.808e-12  (not concave)
+Iteration 177: EE criterion =  1.805e-12  (not concave)
+Iteration 178: EE criterion =  1.803e-12  (not concave)
+Iteration 179: EE criterion =  1.800e-12  (not concave)
+Iteration 180: EE criterion =  1.798e-12  (not concave)
+Iteration 181: EE criterion =  1.795e-12  (not concave)
+Iteration 182: EE criterion =  1.793e-12  (not concave)
+Iteration 183: EE criterion =  1.791e-12  (not concave)
+Iteration 184: EE criterion =  1.788e-12  (not concave)
+Iteration 185: EE criterion =  1.786e-12  (not concave)
+Iteration 186: EE criterion =  1.784e-12  (not concave)
+Iteration 187: EE criterion =  1.782e-12  (not concave)
+Iteration 188: EE criterion =  1.779e-12  (not concave)
+Iteration 189: EE criterion =  1.777e-12  (not concave)
+Iteration 190: EE criterion =  1.775e-12  (not concave)
+Iteration 191: EE criterion =  1.773e-12  (not concave)
+Iteration 192: EE criterion =  1.771e-12  (not concave)
+Iteration 193: EE criterion =  1.769e-12  (not concave)
+Iteration 194: EE criterion =  1.767e-12  (not concave)
+Iteration 195: EE criterion =  1.764e-12  (not concave)
+Iteration 196: EE criterion =  1.762e-12  (not concave)
+Iteration 197: EE criterion =  1.760e-12  (not concave)
+Iteration 198: EE criterion =  1.758e-12  (not concave)
+Iteration 199: EE criterion =  1.756e-12  (not concave)
+Iteration 200: EE criterion =  1.754e-12  (not concave)
+Iteration 201: EE criterion =  1.752e-12  (not concave)
+Iteration 202: EE criterion =  1.750e-12  (not concave)
+Iteration 203: EE criterion =  1.748e-12  (not concave)
+Iteration 204: EE criterion =  1.746e-12  (not concave)
+Iteration 205: EE criterion =  1.745e-12  (not concave)
+Iteration 206: EE criterion =  1.743e-12  (not concave)
+Iteration 207: EE criterion =  1.741e-12  (not concave)
+Iteration 208: EE criterion =  1.739e-12  (not concave)
+Iteration 209: EE criterion =  1.737e-12  (not concave)
+Iteration 210: EE criterion =  1.735e-12  (not concave)
+Iteration 211: EE criterion =  1.733e-12  (not concave)
+Iteration 212: EE criterion =  1.732e-12  (not concave)
+Iteration 213: EE criterion =  1.730e-12  (not concave)
+Iteration 214: EE criterion =  1.728e-12  (not concave)
+Iteration 215: EE criterion =  1.726e-12  (not concave)
+Iteration 216: EE criterion =  1.725e-12  (not concave)
+Iteration 217: EE criterion =  1.723e-12  (not concave)
+Iteration 218: EE criterion =  1.721e-12  (not concave)
+Iteration 219: EE criterion =  1.720e-12  (not concave)
+Iteration 220: EE criterion =  1.718e-12  (not concave)
+Iteration 221: EE criterion =  1.716e-12  (not concave)
+Iteration 222: EE criterion =  1.715e-12  (not concave)
+Iteration 223: EE criterion =  1.713e-12  (not concave)
+Iteration 224: EE criterion =  1.711e-12  (not concave)
+Iteration 225: EE criterion =  1.710e-12  (not concave)
+Iteration 226: EE criterion =  1.708e-12  (not concave)
+Iteration 227: EE criterion =  1.707e-12  (not concave)
+Iteration 228: EE criterion =  1.705e-12  (not concave)
+Iteration 229: EE criterion =  1.703e-12  (not concave)
+Iteration 230: EE criterion =  1.702e-12  (not concave)
+Iteration 231: EE criterion =  1.700e-12  (not concave)
+Iteration 232: EE criterion =  1.699e-12  (not concave)
+Iteration 233: EE criterion =  1.697e-12  (not concave)
+Iteration 234: EE criterion =  1.696e-12  (not concave)
+Iteration 235: EE criterion =  1.694e-12  (not concave)
+Iteration 236: EE criterion =  1.693e-12  (not concave)
+Iteration 237: EE criterion =  1.692e-12  (not concave)
+Iteration 238: EE criterion =  1.690e-12  (not concave)
+Iteration 239: EE criterion =  1.689e-12  (not concave)
+Iteration 240: EE criterion =  1.687e-12  (not concave)
+Iteration 241: EE criterion =  1.686e-12  (not concave)
+Iteration 242: EE criterion =  1.684e-12  (not concave)
+Iteration 243: EE criterion =  1.683e-12  (not concave)
+Iteration 244: EE criterion =  1.682e-12  (not concave)
+Iteration 245: EE criterion =  1.680e-12  (not concave)
+Iteration 246: EE criterion =  1.679e-12  (not concave)
+Iteration 247: EE criterion =  1.678e-12  (not concave)
+Iteration 248: EE criterion =  1.676e-12  (not concave)
+Iteration 249: EE criterion =  1.675e-12  (not concave)
+Iteration 250: EE criterion =  1.674e-12  (not concave)
+Iteration 251: EE criterion =  1.672e-12  (not concave)
+Iteration 252: EE criterion =  1.671e-12  (not concave)
+Iteration 253: EE criterion =  1.670e-12  (not concave)
+Iteration 254: EE criterion =  1.668e-12  (not concave)
+Iteration 255: EE criterion =  1.667e-12  (not concave)
+Iteration 256: EE criterion =  1.666e-12  (not concave)
+Iteration 257: EE criterion =  1.665e-12  (not concave)
+Iteration 258: EE criterion =  1.664e-12  (not concave)
+Iteration 259: EE criterion =  1.662e-12  (not concave)
+Iteration 260: EE criterion =  1.661e-12  (not concave)
+Iteration 261: EE criterion =  1.660e-12  (not concave)
+Iteration 262: EE criterion =  1.659e-12  (not concave)
+Iteration 263: EE criterion =  1.657e-12  (not concave)
+Iteration 264: EE criterion =  1.656e-12  (not concave)
+Iteration 265: EE criterion =  1.655e-12  (not concave)
+Iteration 266: EE criterion =  1.654e-12  (not concave)
+Iteration 267: EE criterion =  1.653e-12  (not concave)
+Iteration 268: EE criterion =  1.652e-12  (not concave)
+Iteration 269: EE criterion =  1.651e-12  (not concave)
+Iteration 270: EE criterion =  1.649e-12  (not concave)
+Iteration 271: EE criterion =  1.648e-12  (not concave)
+Iteration 272: EE criterion =  1.647e-12  (not concave)
+Iteration 273: EE criterion =  1.646e-12  (not concave)
+Iteration 274: EE criterion =  1.645e-12  (not concave)
+Iteration 275: EE criterion =  1.644e-12  (not concave)
+Iteration 276: EE criterion =  1.643e-12  (not concave)
+Iteration 277: EE criterion =  1.642e-12  (not concave)
+Iteration 278: EE criterion =  1.641e-12  (not concave)
+Iteration 279: EE criterion =  1.640e-12  (not concave)
+Iteration 280: EE criterion =  1.639e-12  (not concave)
+Iteration 281: EE criterion =  1.638e-12  (not concave)
+Iteration 282: EE criterion =  1.636e-12  (not concave)
+Iteration 283: EE criterion =  1.635e-12  (not concave)
+Iteration 284: EE criterion =  1.634e-12  (not concave)
+Iteration 285: EE criterion =  1.633e-12  (not concave)
+Iteration 286: EE criterion =  1.632e-12  (not concave)
+Iteration 287: EE criterion =  1.631e-12  (not concave)
+Iteration 288: EE criterion =  1.630e-12  (not concave)
+Iteration 289: EE criterion =  1.629e-12  (not concave)
+Iteration 290: EE criterion =  1.628e-12  (not concave)
+Iteration 291: EE criterion =  1.627e-12  (not concave)
+Iteration 292: EE criterion =  1.626e-12  (not concave)
+Iteration 293: EE criterion =  1.626e-12  (not concave)
+Iteration 294: EE criterion =  1.625e-12  (not concave)
+Iteration 295: EE criterion =  1.624e-12  (not concave)
+Iteration 296: EE criterion =  1.623e-12  (not concave)
+Iteration 297: EE criterion =  1.622e-12  (not concave)
+Iteration 298: EE criterion =  1.621e-12  (not concave)
+Iteration 299: EE criterion =  1.620e-12  (not concave)
+Iteration 300: EE criterion =  1.619e-12  (not concave)
+convergence not achieved
+Warning: Variance matrix is nonsymmetric or highly singular.
+
+Treatment-effects estimation                    Number of obs     =        285
+Estimator      : augmented IPW
+Outcome model  : logit by ML
+Treatment model: logit
+------------------------------------------------------------------------------------------------
+                               |               Robust
+                   unfav_neuro | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------------------------+----------------------------------------------------------------
+POmeans                        |
+                        expose |
+                0_nonexposure  |    .145046          .        .       .            .           .
+                   1_exposure  |   .2063022          .        .       .            .           .
+------------------------------------------------------------------------------------------------
+Warning: Convergence not achieved.
+
+.         //teffects aipw (unfav_neuro $xVarAll,logit) (expose $xVarPSW,logit), pom coeflegend
+.         nlcom log( _b[POmeans:1.expose] / _b[POmeans:0bn.expose])
+
+       _nl_1: log( _b[POmeans:1.expose] / _b[POmeans:0bn.expose])
+
+------------------------------------------------------------------------------
+ unfav_neuro | Coefficient  Std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+       _nl_1 |   .3522909          .        .       .            .           .
+------------------------------------------------------------------------------
+
+. 
+.         
+. log close
+      name:  <unnamed>
+       log:  C:\MPH\MPH_2021-2022\SPH5104 Analytics for Better Health\Group project\Assignment output.log
+  log type:  text
+ closed on:  25 Apr 2022, 19:06:40
+--------------------------------------------------------------------------------------------------------------------
